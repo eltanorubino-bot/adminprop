@@ -2564,10 +2564,20 @@
             var _allOwnerPhotos = _getOwnerPhotos();
             appData.propietarios.forEach(function(owner) {
                 var props = appData.propiedades.filter(function(p) { return p.propietario === owner.id; });
-                var totalRent = props.reduce(function(sum, p) {
+
+                // Calcular renta separada por moneda usando contratos
+                var totalARS = 0;
+                var totalUSD = 0;
+                props.forEach(function(p) {
                     var tenant = appData.inquilinos.find(function(t) { return t.propiedad === p.id; });
-                    return sum + (tenant ? tenant.monto : 0);
-                }, 0);
+                    if (tenant && tenant.monto > 0) {
+                        if (tenant.moneda === 'USD') {
+                            totalUSD += tenant.monto;
+                        } else {
+                            totalARS += tenant.monto;
+                        }
+                    }
+                });
 
                 var color = getColorForInitial(owner.nombre[0]);
                 var _oPhoto = _allOwnerPhotos[owner.id] || null;
@@ -2579,7 +2589,24 @@
                     : '';
                 var _rolHtml = owner.rol ? '<span style="color:var(--accent-teal);font-weight:600;">' + owner.rol + '</span> · ' : '';
                 var _dniHtml = owner.dni ? 'DNI: ' + owner.dni + ' · ' : '';
-                var _rentHtml = totalRent > 0 ? formatCurrency(totalRent) : '—';
+
+                // Render renta en dos filas (USD y ARS)
+                var _rentRows = '';
+                if (totalUSD > 0) {
+                    _rentRows += '<div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-bottom:2px;">'
+                        + '<span style="font-size:11px;color:var(--text-tertiary);background:rgba(34,197,94,0.15);padding:1px 6px;border-radius:4px;">USD</span>'
+                        + '<span style="font-size:16px;font-weight:700;color:#22c55e;">USD ' + totalUSD.toLocaleString('es-AR') + '</span>'
+                        + '</div>';
+                }
+                if (totalARS > 0) {
+                    _rentRows += '<div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">'
+                        + '<span style="font-size:11px;color:var(--text-tertiary);background:rgba(124,58,237,0.15);padding:1px 6px;border-radius:4px;">ARS</span>'
+                        + '<span style="font-size:16px;font-weight:700;color:var(--accent-purple);">' + formatCurrency(totalARS) + '</span>'
+                        + '</div>';
+                }
+                if (totalUSD === 0 && totalARS === 0) {
+                    _rentRows = '<div style="font-size:16px;font-weight:700;color:var(--text-tertiary);">—</div>';
+                }
 
                 var item = document.createElement('div');
                 item.className = 'list-item';
@@ -2600,7 +2627,7 @@
                     + '</div>'
                     + '<div style="display:flex;align-items:center;gap:12px;">'
                     +   '<div style="text-align:right;">'
-                    +     '<div style="font-size:16px;font-weight:700;color:var(--accent-purple);">' + _rentHtml + '</div>'
+                    +     _rentRows
                     +     '<div style="font-size:11px;color:var(--text-tertiary);">renta mensual</div>'
                     +   '</div>'
                     +   '<div style="display:flex;gap:2px;">'
