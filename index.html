@@ -1849,6 +1849,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const FB_COL = 'manzanares4559'; // colección raíz en Firestore
+        const FB_FOTOS = FB_COL + '_fotos'; // colección para fotos en la nube
 
         // Colecciones que van a la nube (fotos van a localStorage)
         const FB_KEYS = ['propietarios','propiedades','inquilinos','contratos',
@@ -1857,20 +1858,44 @@
         // Estado inicial vacío — se llena desde Firestore en initializeApp()
         let appData = JSON.parse(JSON.stringify(initialData));
 
-        // ── Cargar imágenes guardadas localmente y mezclarlas con propiedades ──
-        function restoreLocalPhotos() {
+        // ── Cache en memoria para fotos (se llena desde Firestore) ──────────
+        let _photosCache = { prop: {}, tenant: {}, owner: {} };
+
+        // ── Cargar TODAS las fotos desde Firestore ──────────────────────────
+        async function restoreLocalPhotos() {
             try {
-                const imgs = JSON.parse(localStorage.getItem('rentacrm_images') || '{}');
-                (appData.propiedades || []).forEach(p => {
-                    if (imgs[p.id]) p.imagen = imgs[p.id];
+                const snapshot = await db.collection(FB_FOTOS).get();
+                snapshot.forEach(doc => {
+                    const id = doc.id;
+                    const base64 = doc.data().data;
+                    if (!base64) return;
+                    if (id.startsWith('prop_')) {
+                        const propId = parseInt(id.replace('prop_', ''));
+                        _photosCache.prop[propId] = base64;
+                        const prop = (appData.propiedades || []).find(p => p.id === propId);
+                        if (prop) prop.imagen = base64;
+                    } else if (id.startsWith('tenant_')) {
+                        _photosCache.tenant[id.replace('tenant_', '')] = base64;
+                    } else if (id.startsWith('owner_')) {
+                        _photosCache.owner[id.replace('owner_', '')] = base64;
+                    }
                 });
-            } catch(e) {}
+            } catch(e) {
+                console.warn('Error cargando fotos desde la nube, intentando localStorage:', e);
+                // Fallback a localStorage por si Firestore falla
+                try {
+                    const imgs = JSON.parse(localStorage.getItem('rentacrm_images') || '{}');
+                    Object.assign(_photosCache.prop, imgs);
+                    (appData.propiedades || []).forEach(p => { if (imgs[p.id]) p.imagen = imgs[p.id]; });
+                } catch(e2) {}
+                try { Object.assign(_photosCache.tenant, JSON.parse(localStorage.getItem('rentacrm_tenant_images') || '{}')); } catch(e2) {}
+                try { Object.assign(_photosCache.owner, JSON.parse(localStorage.getItem('rentacrm_owner_images') || '{}')); } catch(e2) {}
+            }
         }
 
-        // ── Fotos de inquilinos en localStorage ──────────────────────────────
+        // ── Fotos de inquilinos (Firestore) ──────────────────────────────────
         function _getTenantPhotos() {
-            try { return JSON.parse(localStorage.getItem('rentacrm_tenant_images') || '{}'); }
-            catch(e) { return {}; }
+            return _photosCache.tenant;
         }
 
         function uploadTenantPhoto(event, tenantId) {
@@ -1888,15 +1913,11 @@
                     canvas.width = w; canvas.height = h;
                     canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                     const compressed = canvas.toDataURL('image/jpeg', 0.80);
-                    try {
-                        const imgs = _getTenantPhotos();
-                        imgs[tenantId] = compressed;
-                        localStorage.setItem('rentacrm_tenant_images', JSON.stringify(imgs));
-                        showToast('Foto del inquilino actualizada ✓');
-                        renderTenantCards();
-                    } catch(err) {
-                        showToast('⚠️ No se pudo guardar la foto: almacenamiento lleno.', 'err');
-                    }
+                    _photosCache.tenant[tenantId] = compressed;
+                    db.collection(FB_FOTOS).doc('tenant_' + tenantId).set({ data: compressed })
+                        .then(() => showToast('Foto del inquilino actualizada ✓'))
+                        .catch(err => showToast('⚠️ Error guardando foto en la nube.', 'err'));
+                    renderTenantCards();
                 };
                 img.src = e.target.result;
             };
@@ -1904,19 +1925,15 @@
         }
 
         function deleteTenantPhoto(tenantId) {
-            try {
-                const imgs = _getTenantPhotos();
-                delete imgs[tenantId];
-                localStorage.setItem('rentacrm_tenant_images', JSON.stringify(imgs));
-                showToast('Foto eliminada');
-                renderTenantCards();
-            } catch(err) {}
+            delete _photosCache.tenant[tenantId];
+            db.collection(FB_FOTOS).doc('tenant_' + tenantId).delete().catch(() => {});
+            showToast('Foto eliminada');
+            renderTenantCards();
         }
 
-        // ── Owner Photos (localStorage) ─────────────────────────────────────────
+        // ── Owner Photos (Firestore) ─────────────────────────────────────────
         function _getOwnerPhotos() {
-            try { return JSON.parse(localStorage.getItem('rentacrm_owner_images') || '{}'); }
-            catch(e) { return {}; }
+            return _photosCache.owner;
         }
 
         function uploadOwnerPhoto(event, ownerId) {
@@ -1934,15 +1951,11 @@
                     canvas.width = w; canvas.height = h;
                     canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                     var compressed = canvas.toDataURL('image/jpeg', 0.80);
-                    try {
-                        var imgs = _getOwnerPhotos();
-                        imgs[ownerId] = compressed;
-                        localStorage.setItem('rentacrm_owner_images', JSON.stringify(imgs));
-                        showToast('Foto del propietario actualizada ✓');
-                        renderOwners();
-                    } catch(err) {
-                        showToast('⚠️ No se pudo guardar la foto: almacenamiento lleno.', 'err');
-                    }
+                    _photosCache.owner[ownerId] = compressed;
+                    db.collection(FB_FOTOS).doc('owner_' + ownerId).set({ data: compressed })
+                        .then(() => showToast('Foto del propietario actualizada ✓'))
+                        .catch(err => showToast('⚠️ Error guardando foto en la nube.', 'err'));
+                    renderOwners();
                 };
                 img.src = e.target.result;
             };
@@ -1950,13 +1963,10 @@
         }
 
         function deleteOwnerPhoto(ownerId) {
-            try {
-                var imgs = _getOwnerPhotos();
-                delete imgs[ownerId];
-                localStorage.setItem('rentacrm_owner_images', JSON.stringify(imgs));
-                showToast('Foto eliminada');
-                renderOwners();
-            } catch(err) {}
+            delete _photosCache.owner[ownerId];
+            db.collection(FB_FOTOS).doc('owner_' + ownerId).delete().catch(() => {});
+            showToast('Foto eliminada');
+            renderOwners();
         }
 
         // ── Guardar en Firestore (fire-and-forget, no bloquea la UI) ──────────
@@ -2056,12 +2066,9 @@
                     if (!doc.exists) return;
                     const newItems = doc.data().items || [];
 
-                    // Mezclar fotos locales en propiedades
+                    // Mezclar fotos desde cache en memoria (cargadas de Firestore)
                     if (key === 'propiedades') {
-                        try {
-                            const imgs = JSON.parse(localStorage.getItem('rentacrm_images') || '{}');
-                            newItems.forEach(p => { if (imgs[p.id]) p.imagen = imgs[p.id]; });
-                        } catch(e) {}
+                        newItems.forEach(p => { if (_photosCache.prop[p.id]) p.imagen = _photosCache.prop[p.id]; });
                     }
 
                     // Actualizar appData
@@ -2094,10 +2101,7 @@
                     if (!doc.exists) return;
                     const newItems = doc.data().items || [];
                     if (key === 'propiedades') {
-                        try {
-                            const imgs = JSON.parse(localStorage.getItem('rentacrm_images') || '{}');
-                            newItems.forEach(p => { if (imgs[p.id]) p.imagen = imgs[p.id]; });
-                        } catch(e) {}
+                        newItems.forEach(p => { if (_photosCache.prop[p.id]) p.imagen = _photosCache.prop[p.id]; });
                     }
                     appData[key] = newItems;
                 });
@@ -2125,10 +2129,7 @@
                             const incoming = JSON.stringify(newItems);
                             if (incoming !== current) {
                                 if (key === 'propiedades') {
-                                    try {
-                                        const imgs = JSON.parse(localStorage.getItem('rentacrm_images') || '{}');
-                                        newItems.forEach(p => { if (imgs[p.id]) p.imagen = imgs[p.id]; });
-                                    } catch(e) {}
+                                    newItems.forEach(p => { if (_photosCache.prop[p.id]) p.imagen = _photosCache.prop[p.id]; });
                                 }
                                 appData[key] = newItems;
                                 rerender();
@@ -3669,18 +3670,14 @@
                     if (!prop) return;
                     prop.imagen = compressed;
 
-                    // Guardar foto en localStorage por separado (no va a Firestore por tamaño)
-                    try {
-                        const imgs = JSON.parse(localStorage.getItem('rentacrm_images') || '{}');
-                        imgs[propId] = compressed;
-                        localStorage.setItem('rentacrm_images', JSON.stringify(imgs));
-                        showToast('Foto actualizada ✓ (guardada en este dispositivo)');
-                    } catch(err) {
-                        console.warn('No se pudo guardar imagen localmente:', err);
-                        showToast('⚠️ No se pudo guardar la foto: almacenamiento lleno. Intentá con una imagen más pequeña.', 'err');
-                        delete prop.imagen;
-                        return;
-                    }
+                    // Guardar foto en Firestore (cada imagen en su propio documento)
+                    _photosCache.prop[propId] = compressed;
+                    db.collection(FB_FOTOS).doc('prop_' + propId).set({ data: compressed })
+                        .then(() => showToast('Foto actualizada ✓ (guardada en la nube)'))
+                        .catch(err => {
+                            console.warn('No se pudo guardar imagen en la nube:', err);
+                            showToast('⚠️ Error al guardar la foto en la nube.', 'err');
+                        });
                     persistAll(); // sube el resto a Firestore (sin imagen)
                     rerender();
                 };
@@ -3694,12 +3691,9 @@
             if (!prop) return;
             delete prop.imagen;
 
-            // Eliminar de localStorage también
-            try {
-                const imgs = JSON.parse(localStorage.getItem('rentacrm_images') || '{}');
-                delete imgs[propId];
-                localStorage.setItem('rentacrm_images', JSON.stringify(imgs));
-            } catch(err) {}
+            // Eliminar de Firestore
+            delete _photosCache.prop[propId];
+            db.collection(FB_FOTOS).doc('prop_' + propId).delete().catch(() => {});
 
             persistAll();
             showToast('Foto eliminada');
