@@ -1517,8 +1517,8 @@
                 <div class="sidebar-group">
                     <div class="sidebar-group-label">COMERCIAL</div>
                     <div class="sidebar-item" data-view="inbox" onclick="goToView('inbox')">
-                        <span style="font-size: 16px;">📥</span>
-                        <span>Bandeja</span>
+                        <span style="font-size: 16px;">💬</span>
+                        <span>Plantillas WA</span>
                         <span class="sidebar-badge" id="inboxBadge">0</span>
                     </div>
                     <div class="sidebar-item" data-view="contracts" onclick="goToView('contracts')">
@@ -1544,6 +1544,18 @@
                         <span>Quejas</span>
                         <span class="sidebar-badge" id="complaintsBadge">0</span>
                     </div>
+                    <div class="sidebar-item" data-view="gastos" onclick="goToView('gastos')">
+                        <span style="font-size: 16px;">📊</span>
+                        <span>Expensas</span>
+                    </div>
+                    <div class="sidebar-item" data-view="caja" onclick="goToView('caja')">
+                        <span style="font-size: 16px;">🏦</span>
+                        <span>Caja</span>
+                    </div>
+                    <div class="sidebar-item" data-view="reportes" onclick="goToView('reportes')">
+                        <span style="font-size: 16px;">📄</span>
+                        <span>Reportes</span>
+                    </div>
                 </div>
 
                 <!-- Servicios -->
@@ -1553,22 +1565,10 @@
                         <span style="font-size: 16px;">🔧</span>
                         <span>Proveedores</span>
                     </div>
-                    <div class="sidebar-item" data-view="gastos" onclick="goToView('gastos')">
-                        <span style="font-size: 16px;">📊</span>
-                        <span>Expensas</span>
-                    </div>
                     <div class="sidebar-item" data-view="agenda" onclick="goToView('agenda')">
                         <span style="font-size: 16px;">📅</span>
                         <span>Agenda</span>
                         <span class="sidebar-badge" id="agendaBadge" style="background:#ef4444;">0</span>
-                    </div>
-                    <div class="sidebar-item" data-view="caja" onclick="goToView('caja')">
-                        <span style="font-size: 16px;">🏦</span>
-                        <span>Caja</span>
-                    </div>
-                    <div class="sidebar-item" data-view="reportes" onclick="goToView('reportes')">
-                        <span style="font-size: 16px;">📄</span>
-                        <span>Reportes</span>
                     </div>
                     <div class="sidebar-item" data-view="servicios" onclick="goToView('servicios')">
                         <span style="font-size: 16px;">🔌</span>
@@ -2382,7 +2382,7 @@
                 properties: '🏠 Propiedades',
                 owners: '👤 Propietarios',
                 contacts: '👥 Contactos',
-                inbox: '📥 Bandeja',
+                inbox: '💬 Plantillas WA',
                 contracts: '📋 Contratos',
                 tenants: '🔑 Inquilinos',
                 collections: '💰 Cobranzas',
@@ -6743,7 +6743,7 @@
 
             el.innerHTML =
                 '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">' +
-                    '<h2 style="font-size:20px;font-weight:700;color:var(--text-primary);">📥 Bandeja</h2>' +
+                    '<h2 style="font-size:20px;font-weight:700;color:var(--text-primary);">💬 Plantillas WA</h2>' +
                 '</div>' +
                 '<div style="display:flex;gap:8px;margin-bottom:20px;background:var(--bg-card);padding:6px;border-radius:10px;border:1px solid var(--border);width:fit-content;">' +
                     tabsHTML +
