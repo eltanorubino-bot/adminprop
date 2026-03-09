@@ -3327,8 +3327,8 @@
                 card.innerHTML = `
                     <div class="cobr-row" style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;">
                         <div style="flex:1;">
-                            <div style="font-weight:600;font-size:14px;color:var(--text-primary);">${tenant.nombre}</div>
-                            <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">${prop?.nombre || '—'} · Último pago: ${tenant.ultimoPago || '—'} (${daysSincePay})</div>
+                            <div style="font-weight:700;font-size:15px;color:var(--text-primary);">${prop?.nombre || '—'}</div>
+                            <div style="font-size:12px;color:var(--text-secondary);margin-top:3px;">👤 ${tenant.nombre} &nbsp;·&nbsp; Último pago: ${tenant.ultimoPago || '—'} (${daysSincePay})</div>
                         </div>
                         <div style="text-align:right;min-width:100px;">
                             <div style="font-size:15px;font-weight:700;color:var(--accent-purple);">${montoStr}/mes</div>
@@ -6996,6 +6996,92 @@
         // ── Caja del Consorcio ──────────────────────────────────────────────────
         let _cajaFiltro = 'todas';
 
+
+        // ── Importador Banco Galicia ────────────────────────────────────────────
+        async function importarGalicia(event) {
+            const file = event.target.files[0];
+            event.target.value = '';
+            if (!file) return;
+
+            showToast('Leyendo extracto...', 'info');
+
+            try {
+                const data = await file.arrayBuffer();
+                const wb = XLSX.read(data, { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+                // Galicia: fila 6 (índice 5) = headers, fila 7+ = movimientos
+                const movs = [];
+                for (let i = 6; i < rows.length; i++) {
+                    const row = rows[i];
+                    const fechaRaw = row[0];
+                    const movDesc  = String(row[1] || '').replace(/\n/g,' ').replace(/\s+/g,' ').trim();
+                    const debitoRaw  = String(row[2] || '0');
+                    const creditoRaw = String(row[3] || '0');
+
+                    if (!fechaRaw || !movDesc) continue;
+
+                    // Parsear montos argentinos: -489.473,00 → 489473
+                    const parseMonto = s => {
+                        const clean = s.replace(/\./g,'').replace(',','.');
+                        return Math.abs(parseFloat(clean) || 0);
+                    };
+
+                    const debito  = parseMonto(debitoRaw);
+                    const credito = parseMonto(creditoRaw);
+                    if (debito === 0 && credito === 0) continue;
+
+                    // Extraer primera línea del movimiento como concepto
+                    const concepto = movDesc.split('  ')[0].trim().slice(0, 80);
+
+                    // Detectar tipo
+                    const tipo = credito > 0 ? 'Ingreso' : 'Egreso';
+                    const monto = credito > 0 ? credito : debito;
+
+                    // Fecha: DD/MM/YYYY → DD/MM/YYYY (ya está en ese formato)
+                    let fecha = fechaRaw;
+                    if (typeof fechaRaw === 'number') {
+                        // Excel serial date
+                        const d = new Date(Math.round((fechaRaw - 25569) * 86400 * 1000));
+                        fecha = d.getDate().toString().padStart(2,'0') + '/' +
+                                (d.getMonth()+1).toString().padStart(2,'0') + '/' +
+                                d.getFullYear();
+                    }
+
+                    movs.push({ fecha, concepto, tipo, monto, cuenta: 'Banco', notas: 'Importado Galicia' });
+                }
+
+                if (movs.length === 0) {
+                    showToast('No se encontraron movimientos', 'err');
+                    return;
+                }
+
+                // Evitar duplicados: comparar fecha+concepto+monto
+                const existing = new Set(
+                    (appData.caja || []).map(m => m.fecha + '|' + m.concepto + '|' + m.monto)
+                );
+                const nuevos = movs.filter(m => !existing.has(m.fecha + '|' + m.concepto + '|' + m.monto));
+
+                if (nuevos.length === 0) {
+                    showToast('Todos los movimientos ya estaban registrados', 'info');
+                    return;
+                }
+
+                // Asignar IDs y agregar
+                const maxId = Math.max(0, ...(appData.caja || []).map(m => m.id || 0));
+                nuevos.forEach((m, i) => { m.id = maxId + i + 1; });
+                appData.caja = [...(appData.caja || []), ...nuevos];
+                persistAll();
+                renderCaja();
+                showToast('✅ ' + nuevos.length + ' movimientos importados de Galicia' + (movs.length - nuevos.length > 0 ? ' (' + (movs.length - nuevos.length) + ' ya existían)' : ''));
+
+            } catch(e) {
+                console.error(e);
+                showToast('Error leyendo el archivo: ' + e.message, 'err');
+            }
+        }
+
         function renderCaja() {
             const container = document.getElementById('cajaContent');
             container.innerHTML = '';
@@ -7036,6 +7122,13 @@
                     color:#16a34a;font-size:13px;font-weight:600;cursor:pointer;">
                     📥 Excel
                 </button>
+                <button onclick="document.getElementById('galiciaFileInput').click()"
+                    style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;
+                    border:1px solid rgba(59,130,246,.35);background:rgba(59,130,246,.08);
+                    color:#3b82f6;font-size:13px;font-weight:600;cursor:pointer;">
+                    🏦 Importar Galicia
+                </button>
+                <input type="file" id="galiciaFileInput" accept=".xlsx,.xls" style="display:none;" onchange="importarGalicia(event)">
                 <div style="display:flex;gap:4px;margin-left:auto;">
                     ${['todas','Efectivo','Banco'].map(f =>
                         `<button onclick="filtrarCaja('${f}',this)"
