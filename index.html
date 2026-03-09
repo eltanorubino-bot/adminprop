@@ -3314,6 +3314,13 @@
 
                 const card = document.createElement('div');
                 card.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden;';
+
+                // Fila de acciones (fuera del área colapsable para evitar conflicto de clicks)
+                const waBtn2 = (tenant.whatsapp || tenant.tel)
+                    ? '<button onclick="openWhatsApp(' + tenant.id + ')" title="Enviar WhatsApp" style="background:rgba(37,211,102,.15);color:#25d366;border:1px solid rgba(37,211,102,.3);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:14px;flex-shrink:0;">💬</button>'
+                    : '';
+                const pagoBtn2 = '<button onclick="openAddPagoFor(' + tenant.id + ')" style="background:var(--accent-purple);color:white;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0;">+ Pago</button>';
+
                 card.innerHTML = `
                     <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;" onclick="this.parentElement.querySelector('.pago-hist').classList.toggle('hidden')">
                         <div style="flex:1;">
@@ -3328,8 +3335,10 @@
                             <div style="background:${statusColor};color:white;padding:3px 9px;border-radius:4px;font-size:11px;font-weight:700;">${statusText}</div>
                             ${statusExtra}
                         </div>
-                        <button onclick="event.stopPropagation();openAddPagoFor(${tenant.id})" style="background:var(--accent-purple);color:white;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap;">+ Pago</button>
-                        ${(tenant.whatsapp || tenant.tel) ? `<button onclick="event.stopPropagation();openWhatsApp(${tenant.id})" title="Enviar WhatsApp" style="background:rgba(37,211,102,.15);border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:14px;" >💬</button>` : ''}
+                        <div style="display:flex;gap:6px;align-items:center;" onclick="event.stopPropagation()">
+                            ${pagoBtn2}
+                            ${waBtn2}
+                        </div>
                         <span style="color:var(--text-tertiary);font-size:14px;">▾</span>
                     </div>
                     <div class="pago-hist hidden" style="padding:0 16px 14px 16px;border-top:1px solid var(--border);">
