@@ -2891,10 +2891,22 @@
 
             appData.propietarios.forEach(owner => {
                 const props = appData.propiedades.filter(p => p.propietario === owner.id);
-                const totalRent = props.reduce((sum, p) => {
+                const totalARS = props.reduce((sum, p) => {
                     const tenant = appData.inquilinos.find(t => t.propiedad === p.id);
-                    return sum + (tenant ? tenant.monto : 0);
+                    if (!tenant) return sum;
+                    const moneda = tenant.moneda || p.moneda || 'ARS';
+                    return moneda === 'ARS' ? sum + (tenant.monto || 0) : sum;
                 }, 0);
+                const totalUSD = props.reduce((sum, p) => {
+                    const tenant = appData.inquilinos.find(t => t.propiedad === p.id);
+                    if (!tenant) return sum;
+                    const moneda = tenant.moneda || p.moneda || 'ARS';
+                    return moneda === 'USD' ? sum + (tenant.monto || 0) : sum;
+                }, 0);
+
+                const arsLine = totalARS > 0 ? '<div style="font-size:16px;font-weight:700;color:var(--accent-purple);">' + formatCurrency(totalARS) + '</div>' : '';
+                const usdLine = totalUSD > 0 ? '<div style="font-size:15px;font-weight:700;color:#22c55e;">USD ' + totalUSD.toLocaleString("es-AR") + '</div>' : '';
+                const noRenta = !arsLine && !usdLine ? '<div style="font-size:16px;font-weight:700;color:var(--accent-purple);">—</div>' : '';
 
                 const item = document.createElement('div');
                 item.className = 'list-item';
@@ -2905,13 +2917,13 @@
                     <div style="flex: 1;">
                         <div style="font-weight: 600; margin-bottom: 4px;">${owner.nombre}</div>
                         <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 2px;">
-                            ${owner.rol ? `<span style="color:var(--accent-teal);font-weight:600;">${owner.rol}</span> · ` : ''}${owner.tel || '—'} · ${owner.email || '—'}
+                            ${owner.rol ? '<span style="color:var(--accent-teal);font-weight:600;">' + owner.rol + '</span> · ' : ''}${owner.tel || '—'} · ${owner.email || '—'}
                         </div>
                         <div style="font-size: 12px; color: var(--text-tertiary);">${owner.dni ? 'DNI: ' + owner.dni + ' · ' : ''}${props.length} propiedad(es) · ${owner.direccion || ''}</div>
                     </div>
                     <div style="display:flex;align-items:center;gap:12px;">
                         <div style="text-align: right;">
-                            <div style="font-size: 16px; font-weight: 700; color: var(--accent-purple);">${totalRent > 0 ? formatCurrency(totalRent) : '—'}</div>
+                            ${arsLine}${usdLine}${noRenta}
                             <div style="font-size: 11px; color: var(--text-tertiary);">renta mensual</div>
                         </div>
                         <div style="display:flex;gap:2px;">
@@ -7317,13 +7329,13 @@
                             const egMes  = rowsMes.filter(r => !r.isIng).reduce((s,r) => s + r.val, 0);
                             tableHTML += `
                         <tr>
-                            <td colspan="8" style="padding:10px 14px 6px;background:var(--bg-secondary);border-bottom:1px solid var(--border);border-top:2px solid var(--accent-purple);">
+                            <td colspan="8" style="padding:14px 18px 10px;background:var(--bg-secondary);border-bottom:1px solid var(--border);border-top:3px solid var(--accent-purple);">
                                 <div style="display:flex;align-items:center;justify-content:space-between;">
-                                    <span style="font-size:12px;font-weight:800;color:var(--accent-purple);text-transform:uppercase;letter-spacing:.08em;">📅 ${mesNombre}</span>
-                                    <span style="font-size:11px;color:var(--text-tertiary);">
-                                        <span style="color:#22c55e;font-weight:700;">+${formatCurrency(ingMes)}</span>
+                                    <span style="font-size:18px;font-weight:900;color:var(--accent-purple);text-transform:uppercase;letter-spacing:.1em;">📅 ${mesNombre}</span>
+                                    <span style="font-size:14px;color:var(--text-tertiary);">
+                                        <span style="color:#22c55e;font-weight:800;font-size:15px;">+${formatCurrency(ingMes)}</span>
                                         &nbsp;/&nbsp;
-                                        <span style="color:#ef4444;font-weight:700;">−${formatCurrency(egMes)}</span>
+                                        <span style="color:#ef4444;font-weight:800;font-size:15px;">−${formatCurrency(egMes)}</span>
                                     </span>
                                 </div>
                             </td>
@@ -7388,7 +7400,7 @@
                 if (lastMesKey && lastMesSaldo !== null) {
                     const saldoCierre = lastMesSaldo;
                     const saldoCierreColor = saldoCierre >= 0 ? '#22c55e' : '#ef4444';
-                    tableHTML += `<tr><td colspan="8" style="padding:6px 14px 8px;background:rgba(124,58,237,0.06);border-bottom:2px solid var(--accent-purple);text-align:right;"><span style="font-size:11px;color:var(--text-tertiary);margin-right:8px;">SALDO AL CIERRE DEL MES</span><span style="font-size:14px;font-weight:800;color:${saldoCierreColor};">${formatCurrency(saldoCierre)}</span></td></tr>`;
+                    tableHTML += `<tr><td colspan="8" style="padding:10px 18px 10px;background:rgba(124,58,237,0.08);border-bottom:3px solid var(--accent-purple);text-align:right;"><span style="font-size:13px;font-weight:700;color:var(--text-tertiary);margin-right:12px;text-transform:uppercase;letter-spacing:.06em;">Saldo al cierre del mes</span><span style="font-size:20px;font-weight:900;color:${saldoCierreColor};">${formatCurrency(saldoCierre)}</span></td></tr>`;
                 }
                 tableHTML += `</tbody></table>`;
                 wrap.innerHTML = tableHTML;
