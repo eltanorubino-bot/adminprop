@@ -1274,6 +1274,152 @@
         .gas-status { font-size: 11px; margin-top: 6px; color: var(--text-tertiary); }
 
 
+        /* ── Building Card ─────────────────────────────────────── */
+        .building-card {
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: 14px; overflow: hidden; margin-bottom: 28px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+        }
+        .building-header {
+            position: relative; height: 180px; overflow: hidden;
+            background: linear-gradient(135deg, #1a1f35 0%, #0d1117 100%);
+            display: flex; flex-direction: column; justify-content: flex-end;
+        }
+        .building-header-img {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            object-fit: cover; object-position: center; opacity: 0.7;
+        }
+        .building-header-overlay {
+            position: absolute; inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 55%);
+        }
+        .building-header-info {
+            position: relative; z-index: 2; padding: 16px 20px 18px;
+        }
+        .building-title {
+            font-size: 22px; font-weight: 800; color: #fff;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.6); margin-bottom: 4px;
+        }
+        .building-address {
+            font-size: 13px; color: rgba(255,255,255,0.75);
+            display: flex; align-items: center; gap: 5px;
+        }
+        .building-photo-btn {
+            position: absolute; top: 12px; right: 12px; z-index: 3;
+            background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2);
+            color: #fff; padding: 5px 11px; border-radius: 7px;
+            font-size: 11px; cursor: pointer; opacity: 0; transition: opacity 0.2s;
+        }
+        .building-card:hover .building-photo-btn { opacity: 1; }
+        .building-body { padding: 20px 20px 24px; }
+        .floor-group { margin-bottom: 20px; }
+        .floor-group:last-child { margin-bottom: 0; }
+        .floor-label {
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: .06em; color: var(--text-tertiary);
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+        }
+        .floor-label::after {
+            content: ''; flex: 1; height: 1px; background: var(--border-color);
+        }
+        .floor-units {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+            gap: 12px;
+        }
+        /* Compact unit cards inside building */
+        .unit-card {
+            background: var(--bg-secondary); border: 1px solid var(--border-color);
+            border-radius: 10px; overflow: hidden; transition: all 0.2s;
+            cursor: pointer; display: flex; flex-direction: column;
+        }
+        .unit-card:hover {
+            border-color: var(--accent-purple);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(124,58,237,0.15);
+        }
+        .unit-card-thumb {
+            height: 80px; position: relative; overflow: hidden;
+            display: flex; align-items: flex-end; padding: 8px;
+        }
+        .unit-card-thumb img {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            object-fit: cover; object-position: center;
+        }
+        .unit-card-thumb-overlay {
+            position: absolute; inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%);
+        }
+        .unit-card-status {
+            position: relative; z-index: 2; display: flex;
+            justify-content: space-between; width: 100%;
+        }
+        .unit-status-dot {
+            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+        }
+        .unit-photo-btn {
+            background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.2);
+            color: #fff; padding: 3px 8px; border-radius: 5px; font-size: 10px;
+            cursor: pointer; opacity: 0; transition: opacity 0.2s;
+        }
+        .unit-card:hover .unit-photo-btn { opacity: 1; }
+        .unit-card-body { padding: 10px 12px 8px; flex: 1; }
+        .unit-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+        .unit-tenant { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+        .unit-price { font-size: 13px; font-weight: 700; color: var(--accent-purple); }
+        .unit-card-actions {
+            display: flex; gap: 5px; padding: 6px 10px 8px;
+            border-top: 1px solid var(--border-color);
+        }
+        .unit-btn {
+            flex: 1; font-size: 11px; font-weight: 600; padding: 5px 6px;
+            border-radius: 6px; cursor: pointer; transition: all 0.2s; border: 1px solid;
+        }
+        .unit-btn-edit {
+            background: rgba(124,58,237,0.1); color: var(--accent-purple);
+            border-color: rgba(124,58,237,0.3);
+        }
+        .unit-btn-edit:hover { background: rgba(124,58,237,0.22); }
+        .unit-btn-gallery {
+            background: rgba(20,184,166,0.1); color: var(--accent-teal);
+            border-color: rgba(20,184,166,0.3);
+        }
+        .unit-btn-gallery:hover { background: rgba(20,184,166,0.22); }
+        .unit-btn-del {
+            background: rgba(239,68,68,0.08); color: #ef4444;
+            border-color: rgba(239,68,68,0.25); flex: 0; padding: 5px 9px;
+        }
+        .unit-btn-del:hover { background: rgba(239,68,68,0.18); }
+
+        /* ── Deploy Modal ──────────────────────────────────────── */
+        .deploy-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+        }
+        .deploy-overlay.active { opacity: 1; pointer-events: all; }
+        .deploy-modal {
+            background: var(--bg-secondary); border: 1px solid var(--border-color);
+            border-radius: 14px; padding: 28px; width: 420px; max-width: 95vw;
+            display: flex; flex-direction: column; gap: 16px;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+        }
+        .deploy-modal h3 { margin: 0; font-size: 18px; }
+        .deploy-status {
+            padding: 12px 16px; border-radius: 8px; font-size: 13px;
+            font-weight: 500; min-height: 42px; display: flex; align-items: center;
+            gap: 8px; background: var(--bg-card); border: 1px solid var(--border-color);
+        }
+        .deploy-status.loading { color: #eab308; border-color: rgba(234,179,8,0.3); }
+        .deploy-status.ok  { color: #22c55e; border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.07); }
+        .deploy-status.err { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.07); }
+        .deploy-token-row { display: flex; gap: 8px; align-items: center; }
+        .deploy-token-input {
+            flex: 1; background: var(--bg-card); border: 1px solid var(--border-color);
+            color: var(--text-primary); border-radius: 8px; padding: 8px 12px; font-size: 12px;
+            font-family: monospace;
+        }
+
         .wa-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.7);
             display: flex; align-items: center; justify-content: center;
@@ -1470,7 +1616,14 @@
             <div class="header">
                 <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Menú">☰</button>
                 <h1 class="header-title" id="pageTitle">Dashboard</h1>
-                <div class="header-date" id="currentDate"></div>
+                <div style="display:flex;align-items:center;gap:12px;margin-left:auto;">
+                    <div class="header-date" id="currentDate"></div>
+                    <button onclick="openDeployModal()" title="Actualizar app en GitHub Pages"
+                        style="background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.35);color:var(--accent-purple);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.2s;display:flex;align-items:center;gap:5px;"
+                        onmouseover="this.style.background='rgba(124,58,237,0.22)'"
+                        onmouseout="this.style.background='rgba(124,58,237,0.12)'">🚀 Actualizar
+                    </button>
+                </div>
             </div>
 
             <!-- Content Area -->
@@ -2476,112 +2629,227 @@
             }).join('');
         }
 
+        // ── Helper: extraer número de piso de la dirección ──────────────────
+        function _extractFloor(prop) {
+            // Busca patrón "N°X" o "Xto" o "piso X" en dirección o nombre
+            const txt = (prop.direccion || '') + ' ' + (prop.nombre || '');
+            const m = txt.match(/(\d+)[°º]/);
+            if (m) return parseInt(m[1]);
+            // Fallback: si hay letra en nombre tipo "1A", "4B"
+            const m2 = (prop.nombre || '').match(/^(\d+)/);
+            if (m2) return parseInt(m2[1]);
+            return 0;
+        }
+
+        // ── Render individual unit card (compact) ────────────────────────────
+        function _renderUnitCard(prop) {
+            const tenant = appData.inquilinos.find(t => Number(t.propiedad) === Number(prop.id));
+            const owner  = (appData.propietarios||[]).find(p => Number(p.id) === Number(prop.propietario));
+            const ownerColor = _ownerColor(prop.propietario);
+            const hasPhoto   = prop.imagen && prop.imagen.length > 10;
+            const statusDot  = prop.estado === 'ocupado' ? '#ef4444' : '#22c55e';
+            const statusTxt  = prop.estado === 'ocupado' ? 'OCUPADO' : 'LIBRE';
+
+            // Gradiente según tipo
+            const gradMap = { residencial:'linear-gradient(135deg,#b97d3a,#8b5a2b)', departamento:'linear-gradient(135deg,#4f75c0,#2e5a8c)', comercial:'linear-gradient(135deg,#6b7f4a,#3e4a2b)' };
+            const grad = gradMap[(prop.subtipo||'departamento').toLowerCase()] || gradMap.departamento;
+
+            const priceStr = tenant && tenant.moneda === 'USD'
+                ? 'USD ' + Number(tenant.monto).toLocaleString('es-AR')
+                : (prop.precio > 0 ? formatCurrency(prop.precio) : '—');
+
+            const ownerShort = owner ? (() => { const p = owner.nombre.trim().split(' '); return p.length >= 2 ? p[0]+' '+p[p.length-1] : p[0]; })() : '';
+
+            const card = document.createElement('div');
+            card.className = 'unit-card';
+            if (ownerColor) card.style.borderTop = '3px solid ' + ownerColor;
+
+            // Thumb
+            const thumbDiv = document.createElement('div');
+            thumbDiv.className = 'unit-card-thumb';
+            thumbDiv.style.background = grad;
+            if (hasPhoto) {
+                const img = document.createElement('img');
+                img.src = prop.imagen;
+                img.alt = '';
+                thumbDiv.appendChild(img);
+            }
+            const overlay = document.createElement('div');
+            overlay.className = 'unit-card-thumb-overlay';
+            thumbDiv.appendChild(overlay);
+
+            const statusRow = document.createElement('div');
+            statusRow.className = 'unit-card-status';
+            const dotSpan = '<span style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);">' +
+                '<span style="width:7px;height:7px;border-radius:50%;background:' + statusDot + ';flex-shrink:0;"></span>' + statusTxt + '</span>';
+            const photoLabel = '<label class="unit-photo-btn" title="Foto">' +
+                '📷' +
+                '<input type="file" accept="image/*" style="display:none;" onchange="uploadPropertyPhoto(event,' + prop.id + ')">' +
+                '</label>';
+            statusRow.innerHTML = dotSpan + photoLabel;
+            thumbDiv.appendChild(statusRow);
+            card.appendChild(thumbDiv);
+
+            // Body
+            const body = document.createElement('div');
+            body.className = 'unit-card-body';
+
+            const contrato = (appData.contratos||[]).find(c => Number(c.propiedad) === Number(prop.id) && c.estado !== 'vencido');
+            const _pa = p => ({'Mensual':'mes','Trimestral':'trim.','Cuatrimestral':'cuat.','Semestral':'sem.','Anual':'año'}[p]||(p||'').slice(0,3).toLowerCase());
+            const ajusteBadge = contrato && contrato.porcentajeAjuste
+                ? '<span style="background:rgba(124,58,237,.18);color:#a78bfa;border:1px solid rgba(124,58,237,.3);padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;">+' + contrato.porcentajeAjuste + '% ' + _pa(contrato.periodoAjuste) + '</span>'
+                : (contrato && contrato.indiceAjuste && contrato.indiceAjuste !== 'Sin ajuste'
+                    ? '<span style="background:rgba(124,58,237,.18);color:#a78bfa;border:1px solid rgba(124,58,237,.3);padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;">' + contrato.indiceAjuste + '</span>'
+                    : '');
+
+            const nameRow = '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px;">' +
+                '<div class="unit-name">' + prop.nombre + '</div>' + ajusteBadge + '</div>';
+
+            const tenantRow = tenant
+                ? '<div class="unit-tenant">🔑 ' + tenant.nombre.split(' ')[0] + (ownerShort ? ' &nbsp;·&nbsp; 👤 ' + ownerShort : '') + '</div>'
+                : '<div class="unit-tenant" style="color:var(--text-tertiary);">' + (ownerShort ? '👤 ' + ownerShort : 'Sin inquilino') + '</div>';
+
+            const specsArr = [];
+            if (prop.habitaciones > 0) specsArr.push('🛏️ ' + prop.habitaciones);
+            if (prop.banos > 0) specsArr.push('🚿 ' + prop.banos);
+            if (prop.m2 > 0) specsArr.push('📐 ' + prop.m2 + 'm²');
+            const specsRow = specsArr.length ? '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;">' + specsArr.join(' · ') + '</div>' : '';
+
+            const priceRow = '<div class="unit-price">' + priceStr + (prop.expensas > 0 ? '<span style="font-size:10px;font-weight:400;color:var(--text-tertiary);margin-left:4px;">+' + formatCurrency(prop.expensas) + ' exp.</span>' : '') + '</div>';
+
+            body.innerHTML = nameRow + tenantRow + specsRow + priceRow;
+            card.appendChild(body);
+
+            // Actions
+            const actions = document.createElement('div');
+            actions.className = 'unit-card-actions';
+            actions.innerHTML =
+                '<button class="unit-btn unit-btn-edit" onclick="event.stopPropagation();openEdit(\'propiedades\',' + prop.id + ')">✏️ Editar</button>' +
+                '<button class="unit-btn unit-btn-gallery" onclick="event.stopPropagation();openGallery(' + prop.id + ')">🖼️</button>' +
+                '<button class="unit-btn unit-btn-del" onclick="event.stopPropagation();delEntity(\'propiedades\',' + prop.id + ')" title="Eliminar">🗑️</button>';
+            card.appendChild(actions);
+
+            return card;
+        }
+
+        // ── Render building card + floor groups ──────────────────────────────
         function renderPropertyGrid(properties) {
             const grid = document.getElementById('propertiesGrid');
             grid.innerHTML = '';
 
-            // Add "+" button above grid (once)
+            // Botón agregar (una sola vez)
             if (!document.getElementById('addPropBtn')) {
                 const wrap = document.createElement('div');
                 wrap.id = 'addPropBtn';
                 wrap.style.cssText = 'display:flex;justify-content:flex-end;margin-bottom:16px;';
-                wrap.innerHTML = `<button class="btn-add" onclick="openAdd('propiedades')">+ Agregar propiedad</button>`;
+                wrap.innerHTML = '<button class="btn-add" onclick="openAdd(\'propiedades\')">+ Agregar propiedad</button>';
                 grid.parentNode.insertBefore(wrap, grid);
             }
 
-            properties.forEach(prop => {
-                const tenant = prop.inquilino ? appData.inquilinos.find(t => t.id === prop.inquilino) : null;
-                const owner = appData.propietarios.find(p => p.id === prop.propietario);
-                const statusColor = prop.estado === 'ocupado' ? '#ef4444' : '#22c55e';
-                const typeForGradient = prop.subtipo ? prop.subtipo.toLowerCase() : 'departamento';
-                const hasPhoto = prop.imagen && prop.imagen.length > 10;
-                const photoClass = hasPhoto ? 'has-photo' : '';
-                const photoTag = hasPhoto ? `<img class="prop-img-tag" src="${prop.imagen}" alt="">` : '';
+            if (properties.length === 0) {
+                grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏠</div><div class="empty-state-title">Sin propiedades</div><div class="empty-state-text">No hay propiedades que coincidan con el filtro.</div></div>';
+                return;
+            }
 
-                const ownerColor = _ownerColor(prop.propietario);
-                // Only the top color strip in the image (no overlapping chip)
-                const ownerStrip = ownerColor
-                    ? `<div class="owner-color-strip" style="background:${ownerColor};"></div>`
-                    : '';
-                // Abbreviated owner name for the body section
-                const ownerShort = owner ? (() => {
-                    const parts = owner.nombre.trim().split(' ');
-                    return parts.length >= 2 ? `${parts[0]} ${parts[parts.length-1]}` : parts[0];
-                })() : null;
-                // Contract adjustment badge
-                const contrato = (appData.contratos||[]).find(c => Number(c.propiedad) === Number(prop.id) && c.estado !== 'vencido');
+            // Agrupar por edificio (dirección base) y luego por piso
+            // Detectar si todas son del mismo edificio Manzanares
+            const allManzanares = properties.every(p => (p.direccion||'').includes('Manzanares'));
+
+            if (allManzanares && properties.length > 1) {
+                // ── Modo: building card ──────────────────────────────────────
+                const bCard = document.createElement('div');
+                bCard.className = 'building-card';
+
+                // Foto del edificio (localStorage key: rentacrm_building_photo)
+                const buildingPhoto = localStorage.getItem('rentacrm_building_photo') || '';
+                const occupied = properties.filter(p => p.estado === 'ocupado').length;
+                const available = properties.filter(p => p.estado !== 'ocupado').length;
+
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'building-header';
+                const imgTag = buildingPhoto ? '<img class="building-header-img" src="' + buildingPhoto + '" alt="">' : '';
+                const overlayDiv = '<div class="building-header-overlay"></div>';
+                const photoBtn = '<label class="building-photo-btn" title="Cambiar foto del edificio">' +
+                    '📷 ' + (buildingPhoto ? 'Cambiar foto' : 'Agregar foto') +
+                    '<input type="file" accept="image/*" style="display:none;" onchange="uploadBuildingPhoto(event)">' +
+                    '</label>';
+                const statsRow = '<div style="display:flex;gap:12px;margin-top:6px;">' +
+                    '<span style="background:rgba(34,197,94,0.25);color:#22c55e;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;">✅ ' + occupied + ' ocupado' + (occupied!==1?'s':'') + '</span>' +
+                    '<span style="background:rgba(148,163,184,0.15);color:#94a3b8;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;">⬜ ' + available + ' libre' + (available!==1?'s':'') + '</span>' +
+                    '</div>';
+                headerDiv.innerHTML = imgTag + overlayDiv + photoBtn +
+                    '<div class="building-header-info">' +
+                    '<div class="building-title">🏢 Manzanares 4559</div>' +
+                    '<div class="building-address">📍 Manzanares 4559, Colegiales — CABA</div>' +
+                    statsRow +
+                    '</div>';
+                bCard.appendChild(headerDiv);
+
+                // Body: pisos
+                const bodyDiv = document.createElement('div');
+                bodyDiv.className = 'building-body';
+
+                // Agrupar por piso
+                const byFloor = {};
+                properties.forEach(p => {
+                    const fl = _extractFloor(p);
+                    if (!byFloor[fl]) byFloor[fl] = [];
+                    byFloor[fl].push(p);
+                });
+
+                const floorNums = Object.keys(byFloor).map(Number).sort((a,b)=>a-b);
+                const floorNames = { 1:'Piso 1', 2:'Piso 2', 3:'Piso 3', 4:'Piso 4', 0:'Sin piso' };
+
+                floorNums.forEach(fl => {
+                    const group = document.createElement('div');
+                    group.className = 'floor-group';
+
+                    const label = document.createElement('div');
+                    label.className = 'floor-label';
+                    label.textContent = floorNames[fl] || 'Piso ' + fl;
+                    group.appendChild(label);
+
+                    const unitsRow = document.createElement('div');
+                    unitsRow.className = 'floor-units';
+                    byFloor[fl].forEach(prop => unitsRow.appendChild(_renderUnitCard(prop)));
+                    group.appendChild(unitsRow);
+                    bodyDiv.appendChild(group);
+                });
+
+                bCard.appendChild(bodyDiv);
+                grid.appendChild(bCard);
+
+            } else {
+                // ── Modo clásico: grid de cards (para props fuera de Manzanares) ──
                 const _periodoAbrev = p => ({'Mensual':'mes','Trimestral':'trim.','Cuatrimestral':'cuat.','Semestral':'sem.','Anual':'año'}[p] || (p||'').slice(0,3).toLowerCase());
-                const ajusteBadge = contrato && contrato.porcentajeAjuste
-                    ? `<span style="background:rgba(124,58,237,.18);color:#a78bfa;border:1px solid rgba(124,58,237,.3);padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;">+${contrato.porcentajeAjuste}% / ${_periodoAbrev(contrato.periodoAjuste)}</span>`
-                    : (contrato && contrato.indiceAjuste && contrato.indiceAjuste !== 'Sin ajuste'
-                        ? `<span style="background:rgba(124,58,237,.18);color:#a78bfa;border:1px solid rgba(124,58,237,.3);padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;">${contrato.indiceAjuste} / ${_periodoAbrev(contrato.periodoAjuste)}</span>`
-                        : '');
+                properties.forEach(prop => {
+                    grid.appendChild(_renderUnitCard(prop));
+                });
+            }
+        }
 
-                const card = document.createElement('div');
-                card.className = 'property-card';
-                if (ownerColor) card.style.cssText = `border-top: 4px solid ${ownerColor};`;
-                card.innerHTML = `
-                    <div class="property-image ${typeForGradient} ${photoClass}">
-                        ${photoTag}
-                        ${ownerStrip}
-                        <div class="property-badges">
-                            <div class="badge ${prop.estado}">${prop.estado.toUpperCase()}</div>
-                            <div class="badge">${prop.tipo || 'Residencial'}</div>
-                        </div>
-                        <label class="btn-photo-upload" title="Cambiar foto">
-                            📷 ${hasPhoto ? 'Cambiar foto' : 'Agregar foto'}
-                            <input type="file" class="photo-input" accept="image/*"
-                                onchange="uploadPropertyPhoto(event, ${prop.id})">
-                        </label>
-                    </div>
-                    <div class="property-body">
-                        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-                            <div class="property-name" style="margin:0;">${prop.nombre}</div>
-                            ${ajusteBadge}
-                        </div>
-                        <div class="property-address">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle>
-                            </svg>
-                            ${prop.direccion}
-                        </div>
-                        <div class="property-specs">
-                            ${prop.habitaciones > 0 ? `<div class="property-spec">🛏️ ${prop.habitaciones}</div>` : ''}
-                            ${prop.banos > 0 ? `<div class="property-spec">🚿 ${prop.banos}</div>` : ''}
-                            ${prop.m2 > 0 ? `<div class="property-spec">📐 ${prop.m2}m²</div>` : ''}
-                        </div>
-                        <div class="property-price">
-                            <div class="property-price-main">
-                                <div class="property-price-value">${tenant && tenant.moneda === 'USD' ? 'USD ' + tenant.monto.toLocaleString('es-AR') : prop.precio > 0 ? formatCurrency(prop.precio) : '—'}</div>
-                                ${prop.expensas > 0 ? `<div class="property-expensas">+${formatCurrency(prop.expensas)} exp.</div>` : ''}
-                                ${tenant && tenant.moneda === 'USD' ? `<div style="font-size:10px;color:var(--text-tertiary);">USD/mes</div>` : ''}
-                            </div>
-                            <div style="display: flex; flex-direction: column; gap: 5px; align-items: flex-end;">
-                                <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-secondary);">
-                                    <span style="font-size:13px;">👤</span>
-                                    ${ownerColor ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ownerColor};flex-shrink:0;"></span>` : ''}
-                                    <span style="font-weight:600;">${ownerShort || owner?.nombre || 'N/A'}</span>
-                                </div>
-                                ${tenant ? `<div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-secondary);">
-                                    <span style="font-size:13px;">🔑</span>
-                                    <div class="avatar" style="width:18px;height:18px;font-size:9px;background-color:${getColorForInitial(tenant.nombre[0])};">${getInitials(tenant.nombre)}</div>
-                                    <span style="font-weight:600;">${tenant.nombre.split(' ')[0]}</span>
-                                </div>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
-                // Add action buttons (always visible at bottom of card)
-                const actRow = document.createElement('div');
-                actRow.className = 'card-action-row';
-                actRow.innerHTML = `
-                    <button class="btn-edit-card" onclick="event.stopPropagation();openEdit('propiedades',${prop.id})">✏️ Editar</button>
-                    <button class="btn-edit-card" onclick="event.stopPropagation();openGallery(${prop.id})" style="background:rgba(124,58,237,.12);color:#a78bfa;border-color:rgba(124,58,237,.3);" title="Fotos y planos">🖼️ Galería</button>
-                    <button class="btn-del-card"  onclick="event.stopPropagation();delEntity('propiedades',${prop.id})" title="Eliminar">🗑️</button>
-                `;
-                card.appendChild(actRow);
-                grid.appendChild(card);
-            });
+        // ── Foto del edificio ─────────────────────────────────────────────────
+        function uploadBuildingPhoto(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const MAX_PX = 1200;
+                    let w = img.width, h = img.height;
+                    if (w > MAX_PX) { h = Math.round(h * MAX_PX / w); w = MAX_PX; }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w; canvas.height = h;
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    const compressed = canvas.toDataURL('image/jpeg', 0.72);
+                    localStorage.setItem('rentacrm_building_photo', compressed);
+                    showToast('Foto del edificio actualizada ✓');
+                    renderPropertyGrid(appData.propiedades);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
         }
 
         function filterProperties(filter) {
@@ -6800,6 +7068,69 @@
             }
         }
 
+        // ── Deploy a GitHub Pages ─────────────────────────────────────────────
+        function openDeployModal() {
+            const saved = localStorage.getItem('rentacrm_gh_token');
+            if (saved) document.getElementById('deployToken').value = saved;
+            document.getElementById('deployStatus').className = 'deploy-status';
+            document.getElementById('deployStatus').textContent = '⏳ Listo para actualizar';
+            document.getElementById('deployBtn').disabled = false;
+            document.getElementById('deployOverlay').classList.add('active');
+        }
+        function closeDeployModal() {
+            document.getElementById('deployOverlay').classList.remove('active');
+        }
+        async function runDeploy() {
+            const token = document.getElementById('deployToken').value.trim();
+            if (!token) { alert('Ingresá el token de GitHub'); return; }
+            localStorage.setItem('rentacrm_gh_token', token);
+
+            const statusEl = document.getElementById('deployStatus');
+            const btn = document.getElementById('deployBtn');
+            statusEl.className = 'deploy-status loading';
+            statusEl.textContent = '⏳ Obteniendo versión actual...';
+            btn.disabled = true;
+
+            try {
+                // 1. Obtener SHA actual
+                const metaResp = await fetch('https://api.github.com/repos/eltanorubino-bot/adminprop/contents/index.html', {
+                    headers: { 'Authorization': 'token ' + token }
+                });
+                if (!metaResp.ok) throw new Error('No se pudo obtener el archivo: ' + metaResp.status);
+                const meta = await metaResp.json();
+                const sha = meta.sha;
+
+                statusEl.textContent = '⏳ Preparando y subiendo (' + Math.round(meta.size/1024) + ' KB actual)...';
+
+                // 2. Leer el HTML actual de esta misma página
+                const htmlResp = await fetch(window.location.href);
+                const htmlText = await htmlResp.text();
+
+                // 3. Convertir a base64
+                const b64 = btoa(unescape(encodeURIComponent(htmlText)));
+
+                statusEl.textContent = '⏳ Subiendo a GitHub (' + Math.round(b64.length * 0.75 / 1024) + ' KB)...';
+
+                // 4. PUT a GitHub API
+                const putResp = await fetch('https://api.github.com/repos/eltanorubino-bot/adminprop/contents/index.html', {
+                    method: 'PUT',
+                    headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: 'Update RentaCRM ' + new Date().toLocaleDateString('es-AR'), content: b64, sha: sha })
+                });
+                const putData = await putResp.json();
+                if (putData.commit) {
+                    statusEl.className = 'deploy-status ok';
+                    statusEl.textContent = '✅ ¡Subido! El sitio se actualiza en ~1 min. Commit: ' + putData.commit.sha.slice(0,7);
+                } else {
+                    throw new Error(JSON.stringify(putData).slice(0, 120));
+                }
+            } catch(e) {
+                statusEl.className = 'deploy-status err';
+                statusEl.textContent = '❌ Error: ' + e.message;
+                btn.disabled = false;
+            }
+        }
+
         // Si ya está autenticado en esta sesión, saltear el login
         if (sessionStorage.getItem(SESSION_KEY) === '1') {
             document.getElementById('loginOverlay').style.display = 'none';
@@ -6810,6 +7141,36 @@
             });
         }
     </script>
+
+    <!-- ── DEPLOY MODAL ──────────────────────────────────────────────── -->
+    <div class="deploy-overlay" id="deployOverlay" onclick="if(event.target===this)closeDeployModal()">
+        <div class="deploy-modal">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+                <h3>🚀 Actualizar app</h3>
+                <button onclick="closeDeployModal()" style="background:none;border:none;color:var(--text-secondary);font-size:20px;cursor:pointer;">✕</button>
+            </div>
+            <div style="font-size:13px;color:var(--text-secondary);">
+                Sube la versión actual del HTML a GitHub Pages. El sitio se actualiza en ~1 minuto.
+            </div>
+            <div>
+                <div style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-primary);">GitHub Token</div>
+                <div class="deploy-token-row">
+                    <input type="password" id="deployToken" class="deploy-token-input"
+                        placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+                    <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-secondary);cursor:pointer;white-space:nowrap;">
+                        <input type="checkbox" onchange="document.getElementById('deployToken').type=this.checked?'text':'password'">
+                        Ver
+                    </label>
+                </div>
+                <div style="font-size:11px;color:var(--text-tertiary);margin-top:5px;">El token se guarda solo en tu navegador (localStorage).</div>
+            </div>
+            <div class="deploy-status" id="deployStatus">⏳ Listo para actualizar</div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button onclick="closeDeployModal()" class="btn btn-secondary">Cancelar</button>
+                <button onclick="runDeploy()" id="deployBtn" class="btn btn-primary">🚀 Subir ahora</button>
+            </div>
+        </div>
+    </div>
 
 </body>
 </html>
