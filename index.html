@@ -1447,10 +1447,10 @@
         /* ── Deploy Modal ──────────────────────────────────────── */
         .deploy-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-            display: flex; align-items: center; justify-content: center;
-            z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+            display: none; align-items: center; justify-content: center;
+            z-index: 2000; transition: opacity 0.2s;
         }
-        .deploy-overlay.active { opacity: 1; pointer-events: all; }
+        .deploy-overlay.active { display: flex; }
         .deploy-modal {
             background: var(--bg-secondary); border: 1px solid var(--border-color);
             border-radius: 14px; padding: 28px; width: 420px; max-width: 95vw;
