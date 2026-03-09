@@ -2494,10 +2494,22 @@
             tempList.innerHTML = '';
             appData.inquilinos.forEach(tenant => {
                 const prop = appData.propiedades.find(p => p.id === tenant.propiedad);
-                const propietario = appData.propietarios.find(p => p.id === prop?.propietario);
-                const color = tenant.estado === 'al_dia' ? '#22c55e' : '#ef4444';
-                const status = tenant.estado === 'al_dia' ? 'Al día' : 'Moroso';
-                const daysSincePay = Math.floor((new Date() - new Date(tenant.ultimoPago.split('/').reverse().join('-'))) / (1000 * 60 * 60 * 24));
+                const isMoroso = tenant.estado === 'moroso' || _isAutoMoroso(tenant);
+                const color  = isMoroso ? '#ef4444' : '#22c55e';
+                const status = isMoroso ? 'Moroso' : 'Al día';
+
+                // Días sin pagar — manejo seguro de fecha vacía
+                let daysSincePay = '—';
+                if (tenant.ultimoPago) {
+                    const parts = tenant.ultimoPago.split('/');
+                    if (parts.length === 3) {
+                        const d = new Date(parts[2], parts[1]-1, parts[0]);
+                        if (!isNaN(d)) {
+                            daysSincePay = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
+                        }
+                    }
+                }
+                const diasStr = daysSincePay === '—' ? 'Sin pagos registrados' : daysSincePay + ' días sin pagar';
 
                 const item = document.createElement('div');
                 item.className = 'list-item';
@@ -2511,7 +2523,7 @@
                     </div>
                     <div style="text-align: right;">
                         <div style="font-size: 13px; font-weight: 600; color: ${color};">${status}</div>
-                        <div style="font-size: 11px; color: var(--text-tertiary);">${daysSincePay} días sin pagar</div>
+                        <div style="font-size: 11px; color: var(--text-tertiary);">${diasStr}</div>
                     </div>
                 `;
                 tempList.appendChild(item);
