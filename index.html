@@ -3322,7 +3322,7 @@
                         </div>
                         <div style="text-align:right;min-width:100px;">
                             <div style="font-size:15px;font-weight:700;color:var(--accent-purple);">${montoStr}/mes</div>
-                            ${tenant.deuda ? `<div style="font-size:11px;color:#ef4444;">Deuda: ${formatCurrency(tenant.deuda)}</div>` : ''}
+                            ${tenant.deuda && isMoroso ? `<div style="font-size:11px;color:#ef4444;">Deuda: ${formatCurrency(tenant.deuda)}</div>` : ''}
                         </div>
                         <div style="text-align:center;">
                             <div style="background:${statusColor};color:white;padding:3px 9px;border-radius:4px;font-size:11px;font-weight:700;">${statusText}</div>
