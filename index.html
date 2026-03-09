@@ -4348,11 +4348,11 @@
 
                 // Encabezado de grupo
                 const header = document.createElement('div');
-                header.style.cssText = 'display:flex;align-items:center;gap:8px;margin:20px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--border-color);';
+                header.style.cssText = 'display:flex;align-items:center;gap:10px;margin:28px 0 12px;padding-bottom:10px;border-bottom:2px solid var(--border-color);';
                 header.innerHTML = `
-                    <span style="font-size:18px;">${icon}</span>
-                    <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-secondary);">${rubro}</span>
-                    <span style="font-size:11px;color:var(--text-tertiary);margin-left:4px;">(${groups[rubro].length})</span>`;
+                    <span style="font-size:22px;">${icon}</span>
+                    <span style="font-size:18px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-primary);">${rubro}</span>
+                    <span style="font-size:12px;color:var(--text-tertiary);margin-left:2px;font-weight:500;">(${groups[rubro].length})</span>`;
                 container.appendChild(header);
 
                 // Cards del grupo
@@ -6592,37 +6592,6 @@
   <button onclick="window.print()" style="background:#7c3aed;color:white;border:none;border-radius:8px;padding:10px 28px;font-size:14px;cursor:pointer;font-weight:600;">🖨️ Imprimir / Guardar PDF</button>
   <button onclick="window.close()" style="background:#eee;color:#333;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer;margin-left:8px;">Cerrar</button>
 </div>
-    <div class="wa-overlay" id="waOverlay">
-        <div class="wa-modal">
-            <div class="crud-header">
-                <h3>💬 Enviar WhatsApp</h3>
-                <button class="crud-close" onclick="closeWaModal()">✕</button>
-            </div>
-            <div class="wa-modal-body">
-                <div class="wa-templates">
-                    <div style="font-size:11px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Plantillas</div>
-                    <div id="waBody"></div>
-                </div>
-                <div class="wa-compose">
-                    <div>
-                        <label class="flabel">Número WhatsApp</label>
-                        <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
-                            <span id="waPhoneDisplay" style="font-size:13px;color:var(--accent-purple);font-weight:600;"></span>
-                            <input type="hidden" id="waPhone">
-                        </div>
-                    </div>
-                    <div style="flex:1;display:flex;flex-direction:column;">
-                        <label class="flabel">Mensaje (editá antes de enviar)</label>
-                        <textarea id="waText" class="finput" style="flex:1;min-height:200px;margin-top:4px;resize:none;line-height:1.5;"></textarea>
-                    </div>
-                    <div style="display:flex;gap:8px;justify-content:flex-end;">
-                        <button class="btn-cancel" onclick="closeWaModal()">Cancelar</button>
-                        <button class="btn-save" onclick="sendWhatsApp()" style="background:#25d366;">💬 Abrir WhatsApp</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </body></html>`);
             w.document.close();
         }
@@ -7141,6 +7110,39 @@
             });
         }
     </script>
+
+    <!-- ── WHATSAPP MODAL ─────────────────────────────────────────────── -->
+    <div class="wa-overlay" id="waOverlay">
+        <div class="wa-modal">
+            <div class="crud-header">
+                <h3>💬 Enviar WhatsApp</h3>
+                <button class="crud-close" onclick="closeWaModal()">✕</button>
+            </div>
+            <div class="wa-modal-body">
+                <div class="wa-templates">
+                    <div style="font-size:11px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Plantillas</div>
+                    <div id="waBody"></div>
+                </div>
+                <div class="wa-compose">
+                    <div>
+                        <label class="flabel">Número WhatsApp</label>
+                        <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+                            <span id="waPhoneDisplay" style="font-size:13px;color:var(--accent-purple);font-weight:600;"></span>
+                            <input type="hidden" id="waPhone">
+                        </div>
+                    </div>
+                    <div style="flex:1;display:flex;flex-direction:column;">
+                        <label class="flabel">Mensaje (editá antes de enviar)</label>
+                        <textarea id="waText" class="finput" style="flex:1;min-height:200px;margin-top:4px;resize:none;line-height:1.5;"></textarea>
+                    </div>
+                    <div style="display:flex;gap:8px;justify-content:flex-end;">
+                        <button class="btn-cancel" onclick="closeWaModal()">Cancelar</button>
+                        <button class="btn-save" onclick="sendWhatsApp()" style="background:#25d366;">💬 Abrir WhatsApp</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- ── DEPLOY MODAL ──────────────────────────────────────────────── -->
     <div class="deploy-overlay" id="deployOverlay" onclick="if(event.target===this)closeDeployModal()">
