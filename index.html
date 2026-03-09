@@ -507,30 +507,60 @@
 
         /* Tenant Cards */
         .tenants-section {
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 16px;
+            align-items: start;
         }
 
         .tenant-card {
             background-color: var(--bg-card);
             border: 1px solid var(--border-color);
-            border-left: 4px solid var(--status-green);
+            border-top: 4px solid var(--status-green);
             border-radius: 8px;
-            padding: 16px;
+            overflow: hidden;
             display: flex;
-            gap: 16px;
-            align-items: flex-start;
+            flex-direction: column;
             transition: all 0.2s ease;
         }
 
         .tenant-card:hover {
             border-color: var(--accent-purple);
-            transform: translateX(2px);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(124,58,237,0.15);
         }
 
         .tenant-card.moroso {
-            border-left-color: var(--status-red);
+            border-top-color: var(--status-red);
+        }
+
+        .tenant-prop-thumb {
+            width: 100%;
+            height: 110px;
+            object-fit: cover;
+            object-position: center;
+            display: block;
+            flex-shrink: 0;
+        }
+
+        .tenant-prop-thumb-placeholder {
+            width: 100%;
+            height: 110px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            color: rgba(255,255,255,0.85);
+        }
+
+        .tenant-card-body {
+            padding: 14px 16px 16px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
         }
 
         .tenant-card-content {
@@ -607,6 +637,43 @@
             font-size: 11px;
             color: var(--text-tertiary);
             text-align: right;
+        }
+
+        /* Contracts Grid */
+        .contracts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+            align-items: start;
+        }
+
+        .contract-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-top: 4px solid var(--status-green);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.2s ease;
+        }
+
+        .contract-card:hover {
+            border-color: var(--accent-purple);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(124,58,237,0.15);
+        }
+
+        .contract-card.estado-vencido  { border-top-color: var(--status-red); }
+        .contract-card.estado-verbal   { border-top-color: var(--status-yellow); }
+        .contract-card.estado-activo   { border-top-color: var(--status-green); }
+
+        .contract-card-body {
+            padding: 14px 16px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
         }
 
         /* KPI Cards */
@@ -1300,6 +1367,20 @@
                     </div>
                 </div>
 
+                <!-- Comercial -->
+                <div class="sidebar-group">
+                    <div class="sidebar-group-label">COMERCIAL</div>
+                    <div class="sidebar-item" data-view="inbox" onclick="goToView('inbox')">
+                        <span style="font-size: 16px;">📥</span>
+                        <span>Bandeja</span>
+                        <span class="sidebar-badge" id="inboxBadge">0</span>
+                    </div>
+                    <div class="sidebar-item" data-view="contracts" onclick="goToView('contracts')">
+                        <span style="font-size: 16px;">📋</span>
+                        <span>Contratos</span>
+                    </div>
+                </div>
+
                 <!-- Gestión -->
                 <div class="sidebar-group">
                     <div class="sidebar-group-label">GESTIÓN</div>
@@ -1307,11 +1388,6 @@
                         <span style="font-size: 16px;">🔑</span>
                         <span>Inquilinos</span>
                         <span class="sidebar-badge" id="tenantsBadge">0</span>
-                    </div>
-                    <div class="sidebar-item" data-view="inbox" onclick="goToView('inbox')">
-                        <span style="font-size: 16px;">📥</span>
-                        <span>Bandeja</span>
-                        <span class="sidebar-badge" id="inboxBadge">0</span>
                     </div>
                     <div class="sidebar-item" data-view="collections" onclick="goToView('collections')">
                         <span style="font-size: 16px;">💰</span>
@@ -1460,6 +1536,12 @@
                     </div>
                     <button class="btn btn-primary" onclick="openAdd('inquilinos')" style="margin-bottom: 20px;">+ Nuevo Inquilino</button>
                     <div class="tenants-section" id="tenantsList"></div>
+                </div>
+
+                <!-- Contracts View -->
+                <div class="view" id="contractsView">
+                    <button class="btn btn-primary" onclick="openAdd('contratos')" style="margin-bottom: 20px;">+ Nuevo Contrato</button>
+                    <div class="contracts-grid" id="contractsList"></div>
                 </div>
 
                 <!-- Complaints View -->
@@ -1792,23 +1874,37 @@
         function _isAutoMoroso(tenant) {
             const today = new Date();
             if (today.getDate() <= 5) return false; // still within grace period
-            if (tenant.estado === 'al_dia' || tenant.estado === 'moroso') {
-                // Only auto-detect if not already manually marked
-                if (tenant.estado === 'moroso') return false; // already manual moroso
-            }
+            if (tenant.estado === 'moroso') return false; // ya marcado manualmente
+
             const mm   = String(today.getMonth()+1).padStart(2,'0');
             const yyyy = today.getFullYear();
             const mesActual = `${mm}/${yyyy}`;
+
             const parseMonthYear = d => {
                 if (!d || d === '—') return null;
                 const p = d.split('/');
                 return p.length === 3 ? `${p[1]}/${p[2]}` : null;
             };
-            const hasPago = (appData.pagos||[]).some(p =>
+
+            // Pago directo en el mes actual
+            const hasPagoMes = (appData.pagos||[]).some(p =>
                 Number(p.inquilino) === Number(tenant.id) &&
                 parseMonthYear(p.fecha) === mesActual
             );
-            return !hasPago;
+            if (hasPagoMes) return false;
+
+            // Pago adelantado: buscar si algún pago tiene periodoHasta >= mes actual
+            const todayVal = today.getFullYear() * 100 + (today.getMonth() + 1);
+            const cubierto = (appData.pagos||[]).some(p => {
+                if (Number(p.inquilino) !== Number(tenant.id)) return false;
+                if (!p.periodoHasta) return false;
+                // periodoHasta formato MM/AAAA
+                const parts = p.periodoHasta.trim().split('/');
+                if (parts.length !== 2) return false;
+                const hasta = parseInt(parts[1]) * 100 + parseInt(parts[0]);
+                return hasta >= todayVal;
+            });
+            return !cubierto;
         }
 
         // ── Auto-moroso de expensas: returns true if property has no cobro registered
@@ -1849,7 +1945,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const FB_COL = 'manzanares4559'; // colección raíz en Firestore
-        const FB_FOTOS = FB_COL + '_fotos'; // colección para fotos en la nube
 
         // Colecciones que van a la nube (fotos van a localStorage)
         const FB_KEYS = ['propietarios','propiedades','inquilinos','contratos',
@@ -1858,44 +1953,39 @@
         // Estado inicial vacío — se llena desde Firestore en initializeApp()
         let appData = JSON.parse(JSON.stringify(initialData));
 
-        // ── Cache en memoria para fotos (se llena desde Firestore) ──────────
-        let _photosCache = { prop: {}, tenant: {}, owner: {} };
-
-        // ── Cargar TODAS las fotos desde Firestore ──────────────────────────
-        async function restoreLocalPhotos() {
+        // ── Cargar imágenes guardadas localmente y mezclarlas con propiedades ──
+        // Fallback legacy: restaura fotos desde localStorage si la prop no tiene imagen en Firestore
+        // (útil para fotos subidas antes de la migración a Firestore)
+        function restoreLocalPhotos() {
             try {
-                const snapshot = await db.collection(FB_FOTOS).get();
-                snapshot.forEach(doc => {
-                    const id = doc.id;
-                    const base64 = doc.data().data;
-                    if (!base64) return;
-                    if (id.startsWith('prop_')) {
-                        const propId = parseInt(id.replace('prop_', ''));
-                        _photosCache.prop[propId] = base64;
-                        const prop = (appData.propiedades || []).find(p => p.id === propId);
-                        if (prop) prop.imagen = base64;
-                    } else if (id.startsWith('tenant_')) {
-                        _photosCache.tenant[id.replace('tenant_', '')] = base64;
-                    } else if (id.startsWith('owner_')) {
-                        _photosCache.owner[id.replace('owner_', '')] = base64;
+                const imgs = JSON.parse(localStorage.getItem('rentacrm_images') || '{}');
+                (appData.propiedades || []).forEach(p => {
+                    if (!p.imagen) {
+                        const v = imgs[p.id] || imgs[String(p.id)];
+                        if (v) p.imagen = v;
                     }
                 });
-            } catch(e) {
-                console.warn('Error cargando fotos desde la nube, intentando localStorage:', e);
-                // Fallback a localStorage por si Firestore falla
-                try {
-                    const imgs = JSON.parse(localStorage.getItem('rentacrm_images') || '{}');
-                    Object.assign(_photosCache.prop, imgs);
-                    (appData.propiedades || []).forEach(p => { if (imgs[p.id]) p.imagen = imgs[p.id]; });
-                } catch(e2) {}
-                try { Object.assign(_photosCache.tenant, JSON.parse(localStorage.getItem('rentacrm_tenant_images') || '{}')); } catch(e2) {}
-                try { Object.assign(_photosCache.owner, JSON.parse(localStorage.getItem('rentacrm_owner_images') || '{}')); } catch(e2) {}
-            }
+            } catch(e) {}
         }
 
-        // ── Fotos de inquilinos (Firestore) ──────────────────────────────────
+        // Helper centralizado — solo aplica si prop no tiene imagen ya cargada desde Firestore
+        function _mergeLocalImages(items) {
+            try {
+                const imgs = JSON.parse(localStorage.getItem('rentacrm_images') || '{}');
+                items.forEach(p => {
+                    if (!p.imagen) {
+                        const v = imgs[p.id] || imgs[String(p.id)];
+                        if (v) p.imagen = v;
+                    }
+                });
+            } catch(e) {}
+            return items;
+        }
+
+        // ── Fotos de inquilinos en localStorage ──────────────────────────────
         function _getTenantPhotos() {
-            return _photosCache.tenant;
+            try { return JSON.parse(localStorage.getItem('rentacrm_tenant_images') || '{}'); }
+            catch(e) { return {}; }
         }
 
         function uploadTenantPhoto(event, tenantId) {
@@ -1913,11 +2003,15 @@
                     canvas.width = w; canvas.height = h;
                     canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                     const compressed = canvas.toDataURL('image/jpeg', 0.80);
-                    _photosCache.tenant[tenantId] = compressed;
-                    db.collection(FB_FOTOS).doc('tenant_' + tenantId).set({ data: compressed })
-                        .then(() => showToast('Foto del inquilino actualizada ✓'))
-                        .catch(err => showToast('⚠️ Error guardando foto en la nube.', 'err'));
-                    renderTenantCards();
+                    try {
+                        const imgs = _getTenantPhotos();
+                        imgs[tenantId] = compressed;
+                        localStorage.setItem('rentacrm_tenant_images', JSON.stringify(imgs));
+                        showToast('Foto del inquilino actualizada ✓');
+                        renderTenantCards();
+                    } catch(err) {
+                        showToast('⚠️ No se pudo guardar la foto: almacenamiento lleno.', 'err');
+                    }
                 };
                 img.src = e.target.result;
             };
@@ -1925,59 +2019,21 @@
         }
 
         function deleteTenantPhoto(tenantId) {
-            delete _photosCache.tenant[tenantId];
-            db.collection(FB_FOTOS).doc('tenant_' + tenantId).delete().catch(() => {});
-            showToast('Foto eliminada');
-            renderTenantCards();
-        }
-
-        // ── Owner Photos (Firestore) ─────────────────────────────────────────
-        function _getOwnerPhotos() {
-            return _photosCache.owner;
-        }
-
-        function uploadOwnerPhoto(event, ownerId) {
-            var file = event.target.files[0];
-            if (!file) return;
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                var img = new Image();
-                img.onload = function() {
-                    var canvas = document.createElement('canvas');
-                    var MAX = 200;
-                    var w = img.width, h = img.height;
-                    if (w > h) { if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; } }
-                    else        { if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; } }
-                    canvas.width = w; canvas.height = h;
-                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                    var compressed = canvas.toDataURL('image/jpeg', 0.80);
-                    _photosCache.owner[ownerId] = compressed;
-                    db.collection(FB_FOTOS).doc('owner_' + ownerId).set({ data: compressed })
-                        .then(() => showToast('Foto del propietario actualizada ✓'))
-                        .catch(err => showToast('⚠️ Error guardando foto en la nube.', 'err'));
-                    renderOwners();
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function deleteOwnerPhoto(ownerId) {
-            delete _photosCache.owner[ownerId];
-            db.collection(FB_FOTOS).doc('owner_' + ownerId).delete().catch(() => {});
-            showToast('Foto eliminada');
-            renderOwners();
+            try {
+                const imgs = _getTenantPhotos();
+                delete imgs[tenantId];
+                localStorage.setItem('rentacrm_tenant_images', JSON.stringify(imgs));
+                showToast('Foto eliminada');
+                renderTenantCards();
+            } catch(err) {}
         }
 
         // ── Guardar en Firestore (fire-and-forget, no bloquea la UI) ──────────
         function persistAll() {
             setSyncStatus('saving');
             const writes = FB_KEYS.map(key => {
-                let items = appData[key] || [];
-                // Excluir campo imagen (base64 pesado) — se guarda en localStorage
-                if (key === 'propiedades') {
-                    items = items.map(p => { const {imagen, ...rest} = p; return rest; });
-                }
+                const items = appData[key] || [];
+                // imagen ya va a Firestore (comprimida a ~50-150KB)
                 return db.collection(FB_COL).doc(key).set({ items });
             });
             Promise.all(writes)
@@ -1987,10 +2043,8 @@
                     setSyncStatus('offline');
                     showToast('⚠️ Error al guardar en la nube. Verificá tu conexión.', 'err');
                 });
-            // Cache local de respaldo (sin imágenes de propiedades para no crecer indefinido)
-            const cacheData = JSON.parse(JSON.stringify(appData));
-            (cacheData.propiedades || []).forEach(p => delete p.imagen);
-            localStorage.setItem('rentacrm_data', JSON.stringify(cacheData));
+            // Cache local de respaldo
+            localStorage.setItem('rentacrm_data', JSON.stringify(appData));
         }
 
         // ── Carga inicial desde Firestore ──────────────────────────────────────
@@ -2066,10 +2120,8 @@
                     if (!doc.exists) return;
                     const newItems = doc.data().items || [];
 
-                    // Mezclar fotos desde cache en memoria (cargadas de Firestore)
-                    if (key === 'propiedades') {
-                        newItems.forEach(p => { if (_photosCache.prop[p.id]) p.imagen = _photosCache.prop[p.id]; });
-                    }
+                    // Mezclar fotos locales en propiedades
+                    if (key === 'propiedades') _mergeLocalImages(newItems);
 
                     // Actualizar appData
                     appData[key] = newItems;
@@ -2100,9 +2152,7 @@
                 results.forEach(({ key, doc }) => {
                     if (!doc.exists) return;
                     const newItems = doc.data().items || [];
-                    if (key === 'propiedades') {
-                        newItems.forEach(p => { if (_photosCache.prop[p.id]) p.imagen = _photosCache.prop[p.id]; });
-                    }
+                    if (key === 'propiedades') _mergeLocalImages(newItems);
                     appData[key] = newItems;
                 });
                 rerender();
@@ -2128,9 +2178,7 @@
                             const current = JSON.stringify(appData[key] || []);
                             const incoming = JSON.stringify(newItems);
                             if (incoming !== current) {
-                                if (key === 'propiedades') {
-                                    newItems.forEach(p => { if (_photosCache.prop[p.id]) p.imagen = _photosCache.prop[p.id]; });
-                                }
+                                if (key === 'propiedades') _mergeLocalImages(newItems);
                                 appData[key] = newItems;
                                 rerender();
                                 updateBadges();
@@ -2184,8 +2232,10 @@
                 admin: '📊 Dashboard',
                 properties: '🏠 Propiedades',
                 owners: '👤 Propietarios',
+                contacts: '👥 Contactos',
                 inbox: '📥 Bandeja',
-                tenants: '🔑 Inquilinos y Contratos',
+                contracts: '📋 Contratos',
+                tenants: '🔑 Inquilinos',
                 collections: '💰 Cobranzas',
                 complaints: '📢 Quejas'
             ,
@@ -2206,6 +2256,7 @@
             else if (viewName === 'properties') renderProperties();
             else if (viewName === 'owners') renderOwners();
             else if (viewName === 'tenants') renderTenants();
+            else if (viewName === 'contracts') renderContracts();
             else if (viewName === 'complaints') renderComplaints();
             else if (viewName === 'collections')   renderCollections();
             else if (viewName === 'proveedores')   renderProveedores();
@@ -2549,92 +2600,49 @@
         }
 
         function renderOwners() {
-            var list = document.getElementById('ownersList');
+            const list = document.getElementById('ownersList');
             list.innerHTML = '';
 
             // Add button
             if (!document.getElementById('addOwnerBtn')) {
-                var obtn = document.createElement('div');
+                const obtn = document.createElement('div');
                 obtn.id = 'addOwnerBtn';
                 obtn.style.cssText = 'display:flex;justify-content:flex-end;margin-bottom:14px;';
-                obtn.innerHTML = '<button class="btn-add" onclick="openAdd(\'propietarios\')">+ Agregar propietario</button>';
+                obtn.innerHTML = `<button class="btn-add" onclick="openAdd('propietarios')">+ Agregar propietario</button>`;
                 list.parentNode.insertBefore(obtn, list);
             }
 
-            var _allOwnerPhotos = _getOwnerPhotos();
-            appData.propietarios.forEach(function(owner) {
-                var props = appData.propiedades.filter(function(p) { return p.propietario === owner.id; });
+            appData.propietarios.forEach(owner => {
+                const props = appData.propiedades.filter(p => p.propietario === owner.id);
+                const totalRent = props.reduce((sum, p) => {
+                    const tenant = appData.inquilinos.find(t => t.propiedad === p.id);
+                    return sum + (tenant ? tenant.monto : 0);
+                }, 0);
 
-                // Calcular renta separada por moneda usando contratos
-                var totalARS = 0;
-                var totalUSD = 0;
-                props.forEach(function(p) {
-                    var tenant = appData.inquilinos.find(function(t) { return t.propiedad === p.id; });
-                    if (tenant && tenant.monto > 0) {
-                        if (tenant.moneda === 'USD') {
-                            totalUSD += tenant.monto;
-                        } else {
-                            totalARS += tenant.monto;
-                        }
-                    }
-                });
-
-                var color = getColorForInitial(owner.nombre[0]);
-                var _oPhoto = _allOwnerPhotos[owner.id] || null;
-                var _oAvatarHtml = _oPhoto
-                    ? '<img src="' + _oPhoto + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border-color);" />'
-                    : '<div class="avatar" style="background-color:' + color + ';font-size:12px;width:36px;height:36px;">' + getInitials(owner.nombre) + '</div>';
-                var _oDelPhotoBtn = _oPhoto
-                    ? '<button onclick="event.stopPropagation();deleteOwnerPhoto(' + owner.id + ')" style="position:absolute;top:-3px;right:-3px;width:14px;height:14px;background:#ef4444;border:none;border-radius:50%;color:#fff;font-size:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Quitar foto">✕</button>'
-                    : '';
-                var _rolHtml = owner.rol ? '<span style="color:var(--accent-teal);font-weight:600;">' + owner.rol + '</span> · ' : '';
-                var _dniHtml = owner.dni ? 'DNI: ' + owner.dni + ' · ' : '';
-
-                // Render renta en dos filas (USD y ARS)
-                var _rentRows = '';
-                if (totalUSD > 0) {
-                    _rentRows += '<div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-bottom:2px;">'
-                        + '<span style="font-size:11px;color:var(--text-tertiary);background:rgba(34,197,94,0.15);padding:1px 6px;border-radius:4px;">USD</span>'
-                        + '<span style="font-size:16px;font-weight:700;color:#22c55e;">USD ' + totalUSD.toLocaleString('es-AR') + '</span>'
-                        + '</div>';
-                }
-                if (totalARS > 0) {
-                    _rentRows += '<div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">'
-                        + '<span style="font-size:11px;color:var(--text-tertiary);background:rgba(124,58,237,0.15);padding:1px 6px;border-radius:4px;">ARS</span>'
-                        + '<span style="font-size:16px;font-weight:700;color:var(--accent-purple);">' + formatCurrency(totalARS) + '</span>'
-                        + '</div>';
-                }
-                if (totalUSD === 0 && totalARS === 0) {
-                    _rentRows = '<div style="font-size:16px;font-weight:700;color:var(--text-tertiary);">—</div>';
-                }
-
-                var item = document.createElement('div');
+                const item = document.createElement('div');
                 item.className = 'list-item';
-                item.style.cssText = 'display:flex;align-items:center;gap:12px;';
-                item.innerHTML = ''
-                    + '<div style="position:relative;width:36px;height:36px;flex-shrink:0;">'
-                    +   _oAvatarHtml
-                    +   '<label for="oPhotoInput_' + owner.id + '" onclick="event.stopPropagation()" style="position:absolute;bottom:-3px;right:-3px;width:16px;height:16px;background:#3b82f6;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:8px;border:1.5px solid #0f1a2e;" title="Cambiar foto">📷</label>'
-                    +   '<input type="file" id="oPhotoInput_' + owner.id + '" accept="image/*" style="display:none;" onchange="uploadOwnerPhoto(event,' + owner.id + ')" />'
-                    +   _oDelPhotoBtn
-                    + '</div>'
-                    + '<div style="flex:1;">'
-                    +   '<div style="font-weight:600;margin-bottom:4px;">' + owner.nombre + '</div>'
-                    +   '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:2px;">'
-                    +     _rolHtml + (owner.tel || '—') + ' · ' + (owner.email || '—')
-                    +   '</div>'
-                    +   '<div style="font-size:12px;color:var(--text-tertiary);">' + _dniHtml + props.length + ' propiedad(es) · ' + (owner.direccion || '') + '</div>'
-                    + '</div>'
-                    + '<div style="display:flex;align-items:center;gap:12px;">'
-                    +   '<div style="text-align:right;">'
-                    +     _rentRows
-                    +     '<div style="font-size:11px;color:var(--text-tertiary);">renta mensual</div>'
-                    +   '</div>'
-                    +   '<div style="display:flex;gap:2px;">'
-                    +     '<button class="btn-icon-edit" onclick="openEdit(\'propietarios\',' + owner.id + ')" title="Editar" style="opacity:1;">✏️</button>'
-                    +     '<button class="btn-icon-del" onclick="delEntity(\'propietarios\',' + owner.id + ')" title="Eliminar" style="opacity:1;">🗑️</button>'
-                    +   '</div>'
-                    + '</div>';
+                item.style.display = 'flex';
+                item.style.justifyContent = 'space-between';
+                item.style.alignItems = 'center';
+                item.innerHTML = `
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; margin-bottom: 4px;">${owner.nombre}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 2px;">
+                            ${owner.rol ? `<span style="color:var(--accent-teal);font-weight:600;">${owner.rol}</span> · ` : ''}${owner.tel || '—'} · ${owner.email || '—'}
+                        </div>
+                        <div style="font-size: 12px; color: var(--text-tertiary);">${owner.dni ? 'DNI: ' + owner.dni + ' · ' : ''}${props.length} propiedad(es) · ${owner.direccion || ''}</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div style="text-align: right;">
+                            <div style="font-size: 16px; font-weight: 700; color: var(--accent-purple);">${totalRent > 0 ? formatCurrency(totalRent) : '—'}</div>
+                            <div style="font-size: 11px; color: var(--text-tertiary);">renta mensual</div>
+                        </div>
+                        <div style="display:flex;gap:2px;">
+                            <button class="btn-icon-edit" onclick="openEdit('propietarios',${owner.id})" title="Editar" style="opacity:1;">✏️</button>
+                            <button class="btn-icon-del"  onclick="delEntity('propietarios',${owner.id})" title="Eliminar" style="opacity:1;">🗑️</button>
+                        </div>
+                    </div>
+                `;
                 list.appendChild(item);
             });
         }
@@ -2642,6 +2650,7 @@
         let currentTenantFilter = 'todos';
 
         function renderTenants() {
+            restoreLocalPhotos();
             renderTenantCards();
         }
 
@@ -2661,164 +2670,121 @@
             if (!addTenBtn) {
                 const tbtn = document.createElement('div');
                 tbtn.id = 'addTenantBtn';
-                tbtn.style.cssText = 'display:flex;justify-content:flex-end;margin-bottom:14px;gap:8px;';
-                tbtn.innerHTML = '<button class="btn-add" onclick="openAdd(\'inquilinos\')">+ Agregar inquilino</button>';
+                tbtn.style.cssText = 'display:flex;justify-content:flex-end;margin-bottom:14px;';
+                tbtn.innerHTML = `<button class="btn-add" onclick="openAdd('inquilinos')">+ Agregar inquilino</button>`;
                 list.parentNode.insertBefore(tbtn, list);
             }
-            var filtered = appData.inquilinos;
+            let filtered = appData.inquilinos;
             if (currentTenantFilter === 'al_dia') {
-                filtered = appData.inquilinos.filter(function(t) { return t.estado !== 'moroso' && !_isAutoMoroso(t); });
+                filtered = appData.inquilinos.filter(t => t.estado !== 'moroso' && !_isAutoMoroso(t));
             } else if (currentTenantFilter === 'moroso') {
-                filtered = appData.inquilinos.filter(function(t) { return t.estado === 'moroso' || _isAutoMoroso(t); });
+                filtered = appData.inquilinos.filter(t => t.estado === 'moroso' || _isAutoMoroso(t));
             }
 
-            var _allTenantPhotos = _getTenantPhotos();
-            filtered.forEach(function(tenant) {
-                var prop = appData.propiedades.find(function(p) { return p.id === tenant.propiedad; });
-                var propietario = appData.propietarios.find(function(p) { return p.id === (prop ? prop.propietario : -1); });
-                var color = getColorForInitial(tenant.nombre[0]);
-                var autoMoroso = _isAutoMoroso(tenant);
-                var isMoroso   = tenant.estado === 'moroso' || autoMoroso;
+            const _allTenantPhotos = _getTenantPhotos();
+            const _propImgCache = (function() {
+                try { return JSON.parse(localStorage.getItem('rentacrm_images') || '{}'); } catch(e) { return {}; }
+            })();
+            function _getPropImg(prop) {
+                if (!prop) return null;
+                // prop.imagen ya fue mergeado por restoreLocalPhotos al cargar
+                if (prop.imagen && prop.imagen.length > 10) return prop.imagen;
+                // fallback directo a localStorage por si acaso
+                const v = _propImgCache[prop.id] || _propImgCache[String(prop.id)] || _propImgCache[Number(prop.id)];
+                return v || null;
+            }
+            // Gradientes placeholder por tipo de propiedad
+            const PROP_GRADIENTS = {
+                'departamento': 'linear-gradient(135deg,#4f75c0 0%,#2e5a8c 100%)',
+                'ph':           'linear-gradient(135deg,#8b5a8b 0%,#5a2d5a 100%)',
+                'comercial':    'linear-gradient(135deg,#6b7f4a 0%,#3e4a2b 100%)',
+                'residencial':  'linear-gradient(135deg,#b97d3a 0%,#8b5a2b 100%)',
+            };
 
-                // --- Contract info for this tenant ---
-                var contract = (appData.contratos || []).find(function(c) { return c.inquilino === tenant.id; });
-                var cStatusColor = '';
-                var cStatusText = '';
-                var cSection = '';
-                if (contract) {
-                    cStatusColor = contract.estado === 'vencido' ? '#ef4444' : contract.estado === 'verbal' ? '#eab308' : '#22c55e';
-                    cStatusText  = contract.estado === 'vencido' ? 'VENCIDO' : contract.estado === 'verbal' ? 'VERBAL' : 'ACTIVO';
+            filtered.forEach(tenant => {
+                const prop = appData.propiedades.find(p => p.id === tenant.propiedad);
+                const propietario = appData.propietarios.find(p => p.id === prop?.propietario);
+                const color = getColorForInitial(tenant.nombre[0]);
+                const autoMoroso = _isAutoMoroso(tenant);
+                const isMoroso   = tenant.estado === 'moroso' || autoMoroso;
 
-                    // File attachment buttons
-                    var _hasFile = !!(contract.archivo && contract.archivoNombre);
-                    var _cfName = _hasFile ? contract.archivoNombre : '';
-                    var _cfIsPdf = _hasFile && _cfName.toLowerCase().endsWith('.pdf');
-                    var _cfIsImg = _hasFile && /\.(png|jpe?g|gif|webp|bmp)$/i.test(_cfName);
-                    var _cfCanPreview = _cfIsPdf || _cfIsImg;
-                    var _cfPreviewBtn = _cfCanPreview
-                        ? '<button onclick="event.stopPropagation();previewContractFile(' + contract.id + ')" style="padding:2px 8px;border-radius:5px;background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);color:#a78bfa;font-size:10px;font-weight:600;cursor:pointer;">👁 Ver</button>'
-                        : '';
-                    var _cfDownloadBtn = _hasFile
-                        ? '<a href="' + contract.archivo + '" download="' + _cfName + '" onclick="event.stopPropagation()" style="padding:2px 8px;border-radius:5px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#60a5fa;font-size:10px;font-weight:600;text-decoration:none;">⬇ Bajar</a>'
-                        : '';
-                    var _cfRemoveBtn = _hasFile
-                        ? '<button onclick="event.stopPropagation();removeContractFile(' + contract.id + ')" style="background:none;border:1px solid rgba(239,68,68,.3);border-radius:5px;cursor:pointer;color:#ef4444;font-size:10px;padding:2px 6px;">✕</button>'
-                        : '';
-                    var _cfUploadBtn = !_hasFile
-                        ? '<label onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;color:var(--text-tertiary);">📎 Adjuntar<input type="file" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg" style="display:none;" onchange="uploadContractFile(event,' + contract.id + ')"></label>'
-                        : '';
-                    var _cfFileRow = _hasFile
-                        ? '<div style="display:flex;align-items:center;gap:5px;margin-top:4px;flex-wrap:wrap;">'
-                            + '<span style="font-size:10px;color:var(--text-secondary);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + _cfName + '">📄 ' + _cfName + '</span>'
-                            + _cfPreviewBtn + _cfDownloadBtn + _cfRemoveBtn
-                            + '</div>'
-                        : '<div style="margin-top:4px;">' + _cfUploadBtn + '</div>';
-
-                    var _cAjuste = '';
-                    if (contract.indiceAjuste && contract.indiceAjuste !== 'Sin ajuste') {
-                        _cAjuste = contract.indiceAjuste;
-                        if (contract.periodoAjuste) _cAjuste += ' / ' + contract.periodoAjuste;
-                        if (contract.porcentajeAjuste) _cAjuste += ' (+' + contract.porcentajeAjuste + '%)';
-                    } else if (contract.incremento) {
-                        _cAjuste = contract.incremento;
-                    }
-
-                    cSection = '<div style="margin-top:8px;padding:8px 10px;background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.15);border-radius:8px;">'
-                        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">'
-                        +   '<span style="font-size:11px;font-weight:700;color:var(--text-primary);">📋 Contrato</span>'
-                        +   '<span style="background:' + cStatusColor + ';color:#fff;padding:1px 7px;border-radius:4px;font-size:9px;font-weight:700;text-transform:uppercase;">' + cStatusText + '</span>'
-                        +   '<span style="font-size:10px;color:var(--text-tertiary);">' + (contract.inicio || '—') + ' → ' + (contract.fin || '—') + '</span>'
-                        +   '<div style="margin-left:auto;display:flex;gap:2px;">'
-                        +     '<button class="btn-icon-edit" onclick="event.stopPropagation();openEdit(\'contratos\',' + contract.id + ')" title="Editar contrato" style="width:22px;height:22px;font-size:10px;">✏️</button>'
-                        +     '<button class="btn-icon-del" onclick="event.stopPropagation();delEntity(\'contratos\',' + contract.id + ')" title="Eliminar contrato" style="width:22px;height:22px;font-size:10px;">🗑️</button>'
-                        +   '</div>'
-                        + '</div>'
-                        + (_cAjuste ? '<div style="font-size:10px;color:var(--text-secondary);">Ajuste: ' + _cAjuste + '</div>' : '')
-                        + (contract.notas ? '<div style="font-size:10px;color:var(--status-yellow);margin-top:2px;">⚠️ ' + contract.notas + '</div>' : '')
-                        + _cfFileRow
-                        + '</div>';
-                } else {
-                    cSection = '<div style="margin-top:8px;">'
-                        + '<button onclick="event.stopPropagation();openAdd(\'contratos\')" style="padding:4px 12px;border-radius:6px;background:rgba(124,58,237,.1);border:1px dashed rgba(124,58,237,.3);color:#a78bfa;font-size:11px;cursor:pointer;font-weight:600;">+ Agregar contrato</button>'
-                        + '</div>';
-                }
-
-                var card = document.createElement('div');
+                const card = document.createElement('div');
                 card.className = 'tenant-card' + (isMoroso ? ' moroso' : '');
-                var waPhone = (tenant.whatsapp || tenant.tel || '').replace(/\D/g,'');
-                var hasContact = tenant.tel || tenant.email || waPhone;
-                var badgeText = tenant.estado === 'moroso'
+                const waPhone = (tenant.whatsapp || tenant.tel || '').replace(/\D/g,'');
+                const hasContact = tenant.tel || tenant.email || waPhone;
+                const badgeText = tenant.estado === 'moroso'
                     ? '⚠️ Moroso'
                     : autoMoroso
                         ? '⏰ Sin pago este mes'
                         : '✅ Al día';
-                var _tPhoto = _allTenantPhotos[tenant.id] || null;
-                var _avatarHtml = _tPhoto
-                    ? '<img src="' + _tPhoto + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border-color);" />'
-                    : '<div class="avatar" style="background-color:' + color + ';font-size:12px;width:36px;height:36px;">' + getInitials(tenant.nombre) + '</div>';
-                var _delPhotoBtn = _tPhoto
+
+                // ── Thumbnail de la propiedad ──
+                const propImgSrc = _getPropImg(prop);
+                const propTipo = prop?.tipo?.toLowerCase() || 'departamento';
+                const propGradient = PROP_GRADIENTS[propTipo] || PROP_GRADIENTS['departamento'];
+                const propNombreThumb = prop?.nombre || 'Sin propiedad';
+                const thumbHtml = propImgSrc
+                    ? '<img class="tenant-prop-thumb" src="' + propImgSrc + '" alt="' + propNombreThumb + '" />'
+                    : '<div class="tenant-prop-thumb-placeholder" style="background:' + propGradient + ';">' + propNombreThumb + '</div>';
+
+                // ── Avatar del inquilino ──
+                const _tPhoto = _allTenantPhotos[tenant.id] || null;
+                const _avatarHtml = _tPhoto
+                    ? '<img src="' + _tPhoto + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border-color);flex-shrink:0;" />'
+                    : '<div class="avatar" style="background-color:' + color + ';font-size:12px;width:36px;height:36px;flex-shrink:0;">' + getInitials(tenant.nombre) + '</div>';
+                const _delPhotoBtn = _tPhoto
                     ? '<button onclick="event.stopPropagation();deleteTenantPhoto(' + tenant.id + ')" style="position:absolute;top:-3px;right:-3px;width:14px;height:14px;background:#ef4444;border:none;border-radius:50%;color:#fff;font-size:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Quitar foto">✕</button>'
                     : '';
 
-                var _contactBtns = '';
-                if (hasContact) {
-                    _contactBtns = '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;">';
-                    if (tenant.tel)  _contactBtns += '<a href="tel:' + tenant.tel + '" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:6px;background:rgba(34,197,94,.12);color:#22c55e;font-size:11px;font-weight:600;text-decoration:none;border:1px solid rgba(34,197,94,.2);">📞 Llamar</a>';
-                    if (tenant.email) _contactBtns += '<a href="mailto:' + tenant.email + '" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:6px;background:rgba(59,130,246,.12);color:#3b82f6;font-size:11px;font-weight:600;text-decoration:none;border:1px solid rgba(59,130,246,.2);">✉️ Email</a>';
-                    if (waPhone) _contactBtns += '<button onclick="event.stopPropagation();openWhatsApp(' + tenant.id + ')" style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:6px;background:rgba(37,211,102,.12);color:#25d366;font-size:11px;font-weight:600;border:1px solid rgba(37,211,102,.2);cursor:pointer;">💬 WhatsApp</button>';
-                    _contactBtns += '</div>';
-                }
+                const montoStr = tenant.moneda === 'USD'
+                    ? 'USD ' + tenant.monto.toLocaleString('es-AR')
+                    : tenant.monto > 0 ? formatCurrency(tenant.monto) : '—';
 
-                var _propName = prop ? prop.nombre : 'N/A';
-                var _propBarrio = prop ? (prop.barrio || '') : '';
-                var _propOwner = propietario ? propietario.nombre : 'N/A';
-                var _garantiaBadge = tenant.garantia ? '<span style="background-color:rgba(34,197,94,.1);color:#22c55e;padding:2px 8px;border-radius:4px;font-size:11px;">✓ Garantía</span>' : '';
-                var _montoHtml = tenant.moneda === 'USD' ? 'USD ' + tenant.monto.toLocaleString('es-AR') : (tenant.monto > 0 ? formatCurrency(tenant.monto) : '—');
-                var _datesHtml = (tenant.inicioContrato || '—') + ' - ' + (tenant.finContrato || '—');
-
-                card.innerHTML = ''
-                    + '<div style="position:relative;width:36px;height:36px;flex-shrink:0;">'
-                    +   _avatarHtml
-                    +   '<label for="tPhotoInput_' + tenant.id + '" onclick="event.stopPropagation()" style="position:absolute;bottom:-3px;right:-3px;width:16px;height:16px;background:#3b82f6;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:8px;border:1.5px solid #0f1a2e;" title="Cambiar foto">📷</label>'
-                    +   '<input type="file" id="tPhotoInput_' + tenant.id + '" accept="image/*" style="display:none;" onchange="uploadTenantPhoto(event,' + tenant.id + ')" />'
-                    +   _delPhotoBtn
-                    + '</div>'
-                    + '<div class="tenant-card-content">'
-                    +   '<div class="tenant-header">'
-                    +     '<span class="tenant-name">' + tenant.nombre + '</span>'
-                    +     '<span class="tenant-status-badge ' + (isMoroso ? 'moroso' : '') + '">' + badgeText + '</span>'
-                    +   '</div>'
-                    +   '<div class="tenant-contact">'
-                    +     (tenant.tel ? '<span>📞 ' + tenant.tel + '</span>' : '')
-                    +     (tenant.email ? '<span>✉️ ' + tenant.email + '</span>' : '')
-                    +     (tenant.dni ? '<span>DNI: ' + tenant.dni + '</span>' : '')
-                    +   '</div>'
-                    +   _contactBtns
-                    +   '<div class="tenant-property" style="margin-top:6px;">'
-                    +     '<span class="tenant-property-badge">' + _propName + '</span>'
-                    +     '<span style="font-size:12px;color:var(--text-tertiary);">' + _propBarrio + '</span>'
-                    +     '<span style="font-size:12px;color:var(--text-tertiary);">Prop: ' + _propOwner + '</span>'
-                    +     _garantiaBadge
-                    +   '</div>'
-                    +   cSection
-                    + '</div>'
-                    + '<div class="tenant-right" style="display:flex;align-items:flex-start;gap:10px;">'
-                    +   '<div>'
-                    +     '<div class="tenant-amount">' + _montoHtml + '</div>'
-                    +     '<div class="tenant-dates">' + _datesHtml + '</div>'
-                    +   '</div>'
-                    +   '<div style="display:flex;gap:2px;margin-top:2px;">'
-                    +     '<button class="btn-icon-edit" onclick="openAjusteOverlay(' + tenant.id + ')" title="Historial ajustes" style="background:rgba(234,179,8,.15);color:#eab308;border-color:rgba(234,179,8,.3);">📈</button>'
-                    +     '<button class="btn-icon-edit" onclick="openEdit(\'inquilinos\',' + tenant.id + ')" title="Editar inquilino">✏️</button>'
-                    +     '<button class="btn-icon-del" onclick="delEntity(\'inquilinos\',' + tenant.id + ')" title="Eliminar inquilino">🗑️</button>'
-                    +   '</div>'
-                    + '</div>';
-
+                card.innerHTML = thumbHtml + `
+                    <div class="tenant-card-body">
+                        <div style="position:relative;width:36px;height:36px;flex-shrink:0;">
+                            ${_avatarHtml}
+                            <label for="tPhotoInput_${tenant.id}" onclick="event.stopPropagation()" style="position:absolute;bottom:-3px;right:-3px;width:16px;height:16px;background:#3b82f6;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:8px;border:1.5px solid #0f1a2e;" title="Cambiar foto">📷</label>
+                            <input type="file" id="tPhotoInput_${tenant.id}" accept="image/*" style="display:none;" onchange="uploadTenantPhoto(event,${tenant.id})" />
+                            ${_delPhotoBtn}
+                        </div>
+                        <div class="tenant-card-content">
+                            <div class="tenant-header">
+                                <span class="tenant-name">${tenant.nombre}</span>
+                                <span class="tenant-status-badge ${isMoroso ? 'moroso' : ''}">${badgeText}</span>
+                            </div>
+                            <div class="tenant-contact">
+                                ${tenant.tel ? '<span>📞 ' + tenant.tel + '</span>' : ''}
+                                ${tenant.email ? '<span>✉️ ' + tenant.email + '</span>' : ''}
+                                ${tenant.dni ? '<span>DNI: ' + tenant.dni + '</span>' : ''}
+                            </div>
+                            ${hasContact ? `
+                            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:2px;">
+                                ${tenant.tel ? '<a href="tel:' + tenant.tel + '" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:6px;background:rgba(34,197,94,.12);color:#22c55e;font-size:11px;font-weight:600;text-decoration:none;border:1px solid rgba(34,197,94,.2);">📞 Llamar</a>' : ''}
+                                ${tenant.email ? '<a href="mailto:' + tenant.email + '" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:6px;background:rgba(59,130,246,.12);color:#3b82f6;font-size:11px;font-weight:600;text-decoration:none;border:1px solid rgba(59,130,246,.2);">✉️ Email</a>' : ''}
+                                ${waPhone ? '<button onclick="event.stopPropagation();openWhatsApp(' + tenant.id + ')" style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:6px;background:rgba(37,211,102,.12);color:#25d366;font-size:11px;font-weight:600;border:1px solid rgba(37,211,102,.2);cursor:pointer;">💬 WhatsApp</button>' : ''}
+                            </div>` : ''}
+                            <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:4px;padding-top:8px;border-top:1px solid var(--border-color);">
+                                <div>
+                                    <div style="font-size:16px;font-weight:700;color:var(--accent-purple);">${montoStr}</div>
+                                    <div style="font-size:10px;color:var(--text-tertiary);">${tenant.inicioContrato || '—'} → ${tenant.finContrato || '—'}</div>
+                                    ${propietario ? '<div style="font-size:10px;color:var(--text-tertiary);margin-top:1px;">👤 ' + propietario.nombre + '</div>' : ''}
+                                </div>
+                                <div style="display:flex;gap:2px;">
+                                    <button class="btn-icon-edit" onclick="openAjusteOverlay(${tenant.id})" title="Historial ajustes" style="background:rgba(234,179,8,.15);color:#eab308;border-color:rgba(234,179,8,.3);">📈</button>
+                                    <button class="btn-icon-edit" onclick="openEdit('inquilinos',${tenant.id})" title="Editar">✏️</button>
+                                    <button class="btn-icon-del"  onclick="delEntity('inquilinos',${tenant.id})" title="Eliminar">🗑️</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
                 list.appendChild(card);
             });
         }
 
         function renderContracts() {
+            restoreLocalPhotos();
             const list = document.getElementById('contractsList');
             list.innerHTML = '';
 
@@ -2831,52 +2797,85 @@
                 cbtn.innerHTML = `<button class="btn-add" onclick="openAdd('contratos')">+ Agregar contrato</button>`;
                 list.parentNode.insertBefore(cbtn, list);
             }
+
+            const _contractsPropImgCache = (function() {
+                try { return JSON.parse(localStorage.getItem('rentacrm_images') || '{}'); } catch(e) { return {}; }
+            })();
+            function _getContractPropImg(prop) {
+                if (!prop) return null;
+                if (prop.imagen && prop.imagen.length > 10) return prop.imagen;
+                const v = _contractsPropImgCache[prop.id] || _contractsPropImgCache[String(prop.id)] || _contractsPropImgCache[Number(prop.id)];
+                return v || null;
+            }
+            const PROP_GRADIENTS = {
+                'departamento': 'linear-gradient(135deg,#4f75c0 0%,#2e5a8c 100%)',
+                'ph':           'linear-gradient(135deg,#8b5a8b 0%,#5a2d5a 100%)',
+                'comercial':    'linear-gradient(135deg,#6b7f4a 0%,#3e4a2b 100%)',
+                'residencial':  'linear-gradient(135deg,#b97d3a 0%,#8b5a2b 100%)',
+            };
+
             appData.contratos.forEach(contract => {
                 const tenant = appData.inquilinos.find(t => t.id === contract.inquilino);
                 const prop = appData.propiedades.find(p => p.id === contract.propiedad);
                 const statusColor = contract.estado === 'vencido' ? '#ef4444' : contract.estado === 'verbal' ? '#eab308' : '#22c55e';
-                const statusText = contract.estado === 'vencido' ? 'VENCIDO' : contract.estado === 'verbal' ? 'VERBAL' : 'ACTIVO';
+                const statusText  = contract.estado === 'vencido' ? 'VENCIDO' : contract.estado === 'verbal' ? 'VERBAL' : 'ACTIVO';
 
+                // ── Thumbnail de la propiedad ──
+                const propImgSrc = _getContractPropImg(prop);
+                const propTipo = (prop?.tipo || 'departamento').toLowerCase();
+                const propGradient = PROP_GRADIENTS[propTipo] || PROP_GRADIENTS['departamento'];
+                const propNombreThumb = prop?.nombre || 'Sin propiedad';
+                const thumbHtml = propImgSrc
+                    ? '<img class="tenant-prop-thumb" src="' + propImgSrc + '" alt="' + propNombreThumb + '" />'
+                    : '<div class="tenant-prop-thumb-placeholder" style="background:' + propGradient + ';">' + propNombreThumb + '</div>';
+
+                // ── Archivo adjunto ──
                 const hasFile = !!(contract.archivo && contract.archivoNombre);
-                var _fName = hasFile ? contract.archivoNombre : '';
-                var _fIsPdf = hasFile && _fName.toLowerCase().endsWith('.pdf');
-                var _fIsImg = hasFile && /\.(png|jpe?g|gif|webp|bmp)$/i.test(_fName);
-                var _canPreview = _fIsPdf || _fIsImg;
-                var _previewBtn = _canPreview
-                    ? '<button onclick="previewContractFile(' + contract.id + ')" style="padding:3px 10px;border-radius:6px;background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);color:#a78bfa;font-size:11px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;" title="Vista previa">👁 Ver</button>'
-                    : '<span style="font-size:10px;color:var(--text-tertiary);" title="Solo PDF e imágenes admiten vista previa">🚫 Sin preview</span>';
-                var _downloadBtn = '<a href="' + (hasFile ? contract.archivo : '#') + '" download="' + _fName + '" style="padding:3px 10px;border-radius:6px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#60a5fa;font-size:11px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:4px;cursor:pointer;" title="Descargar ' + _fName + '">⬇ Descargar</a>';
                 const fileBtn = hasFile
-                    ? '<div style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap;">'
-                        + '<span style="font-size:11px;color:var(--text-secondary);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + _fName + '">📄 ' + _fName + '</span>'
-                        + _previewBtn
-                        + _downloadBtn
-                        + '<button onclick="removeContractFile(' + contract.id + ')" style="background:none;border:1px solid rgba(239,68,68,.3);border-radius:6px;cursor:pointer;color:#ef4444;font-size:11px;padding:3px 8px;font-weight:600;" title="Quitar archivo">✕</button>'
-                        + '</div>'
-                    : '<label style="display:inline-flex;align-items:center;gap:4px;margin-top:4px;cursor:pointer;font-size:11px;color:var(--text-tertiary);" title="Adjuntar contrato PDF o Word">'
+                    ? '<span style="display:inline-flex;align-items:center;gap:4px;">'
+                        + '<button onclick="event.stopPropagation();previewContractFile(' + contract.id + ')" style="background:none;border:none;cursor:pointer;font-size:11px;color:#3b82f6;padding:0;" title="Ver ' + contract.archivoNombre + '">👁 Ver</button>'
+                        + '<button onclick="event.stopPropagation();downloadContractFile(' + contract.id + ')" style="background:none;border:none;cursor:pointer;font-size:11px;color:#22c55e;padding:0;" title="Descargar">⬇ Bajar</button>'
+                        + '<button onclick="event.stopPropagation();removeContractFile(' + contract.id + ')" style="background:none;border:none;cursor:pointer;font-size:11px;color:#ef4444;padding:0;" title="Quitar">✕</button>'
+                        + '<span style="font-size:10px;color:var(--text-tertiary);">📄 ' + contract.archivoNombre + '</span>'
+                      + '</span>'
+                    : '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:var(--text-tertiary);" title="Adjuntar contrato PDF o Word">'
                         + '📎 Adjuntar contrato'
-                        + '<input type="file" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg" style="display:none;" onchange="uploadContractFile(event,' + contract.id + ')">'
-                        + '</label>';
+                        + '<input type="file" accept=".pdf,.docx,.doc" style="display:none;" onchange="uploadContractFile(event,' + contract.id + ')">'
+                      + '</label>';
+
+                const montoStr = contract.moneda === 'USD'
+                    ? 'USD ' + contract.monto.toLocaleString('es-AR')
+                    : contract.monto > 0 ? formatCurrency(contract.monto) : '—';
+
+                const tenantName = tenant?.nombre || (contract.notas ? 'Contrato vencido' : 'Sin inquilino');
 
                 const item = document.createElement('div');
-                item.className = 'list-item';
-                item.style.flexDirection = 'column';
-                item.innerHTML = `
-                    <div style="display:flex;align-items:flex-start;gap:12px;width:100%;">
-                        <div style="flex: 1;">
-                            <div style="font-weight: 600; margin-bottom: 4px;">${tenant?.nombre || (contract.notas ? 'Contrato vencido' : 'N/A')} — ${prop?.nombre || 'N/A'}</div>
-                            <div style="font-size: 12px; color: var(--text-secondary);">${contract.inicio || '—'} → ${contract.fin || '—'}</div>
-                            <div style="font-size: 12px; color: var(--text-tertiary);">${contract.incremento || '—'}</div>
-                            ${contract.notas ? `<div style="font-size: 11px; color: var(--status-yellow); margin-top: 2px;">⚠️ ${contract.notas}</div>` : ''}
-                            ${fileBtn}
-                        </div>
-                        <div style="text-align: right; display: flex; gap: 12px; align-items: center;">
+                item.className = 'contract-card estado-' + (contract.estado || 'activo');
+
+                item.innerHTML = thumbHtml + `
+                    <div class="contract-card-body">
+                        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
                             <div>
-                                <div style="font-size: 16px; font-weight: 700; color: var(--accent-purple);">${contract.moneda === 'USD' ? 'USD ' + contract.monto.toLocaleString('es-AR') : contract.monto > 0 ? formatCurrency(contract.monto) : '—'}</div>
-                                <div style="font-size: 11px; color: var(--text-tertiary);">alquiler/mes</div>
+                                <div style="font-weight:700;font-size:14px;line-height:1.3;">${tenantName}</div>
+                                <div style="font-size:11px;color:var(--text-tertiary);margin-top:2px;">🏠 ${propNombreThumb}</div>
                             </div>
-                            <div style="background-color: ${statusColor}; color: white; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase;">${statusText}</div>
-                            <div style="display:flex;gap:2px;">
+                            <div style="background-color:${statusColor};color:white;padding:3px 9px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;flex-shrink:0;">${statusText}</div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-top:1px solid var(--border-color);border-bottom:1px solid var(--border-color);">
+                            <div>
+                                <div style="font-size:18px;font-weight:700;color:var(--accent-purple);">${montoStr}</div>
+                                <div style="font-size:10px;color:var(--text-tertiary);">alquiler/mes</div>
+                            </div>
+                            <div style="text-align:right;font-size:11px;color:var(--text-secondary);">
+                                <div>📅 ${contract.inicio || '—'}</div>
+                                <div style="color:var(--text-tertiary);">hasta ${contract.fin || '—'}</div>
+                            </div>
+                        </div>
+                        ${contract.incremento ? '<div style="font-size:11px;color:var(--text-tertiary);">📈 ' + contract.incremento + '</div>' : ''}
+                        ${contract.notas ? '<div style="font-size:11px;color:var(--status-yellow);">⚠️ ' + contract.notas + '</div>' : ''}
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+                            ${fileBtn}
+                            <div style="display:flex;gap:2px;margin-left:auto;">
                                 <button class="btn-icon-edit" onclick="openEdit('contratos',${contract.id})" title="Editar" style="opacity:1;">✏️</button>
                                 <button class="btn-icon-del"  onclick="delEntity('contratos',${contract.id})" title="Eliminar" style="opacity:1;">🗑️</button>
                             </div>
@@ -2993,8 +2992,32 @@
                 } catch(e) {}
 
                 const isAlDia = tenant.estado === 'al_dia';
-                const statusColor = isAlDia ? '#22c55e' : '#ef4444';
-                const statusText  = isAlDia ? 'AL DÍA' : 'MOROSO';
+                const autoMoroso = _isAutoMoroso(tenant);
+                const isMoroso = tenant.estado === 'moroso' || autoMoroso;
+
+                // Detectar si tiene cobertura adelantada vigente
+                const todayVal = (function() { const t = new Date(); return t.getFullYear() * 100 + (t.getMonth() + 1); })();
+                const pagoAdelantado = (appData.pagos||[]).reduce((best, p) => {
+                    if (Number(p.inquilino) !== Number(tenant.id) || !p.periodoHasta) return best;
+                    const parts = p.periodoHasta.trim().split('/');
+                    if (parts.length !== 2) return best;
+                    const val = parseInt(parts[1]) * 100 + parseInt(parts[0]);
+                    if (val < todayVal) return best;
+                    return (!best || val > best.val) ? { val, label: p.periodoHasta } : best;
+                }, null);
+
+                let statusColor, statusText, statusExtra;
+                if (tenant.estado === 'moroso') {
+                    statusColor = '#ef4444'; statusText = 'MOROSO'; statusExtra = '';
+                } else if (pagoAdelantado) {
+                    statusColor = '#3b82f6'; statusText = 'ADELANTADO';
+                    statusExtra = '<div style="font-size:10px;color:#3b82f6;margin-top:2px;">Cubierto hasta ' + pagoAdelantado.label + '</div>';
+                } else if (!autoMoroso) {
+                    statusColor = '#22c55e'; statusText = 'AL DÍA'; statusExtra = '';
+                } else {
+                    statusColor = '#ef4444'; statusText = 'SIN PAGO'; statusExtra = '';
+                }
+
                 const montoStr = tenant.moneda === 'USD'
                     ? 'USD ' + (tenant.monto || 0).toLocaleString('es-AR')
                     : formatCurrency(tenant.monto);
@@ -3011,7 +3034,7 @@
                             <div style="font-size:18px;line-height:1;">💰</div>
                             <div style="flex:1;">
                                 <div style="font-size:13px;font-weight:600;color:var(--text-primary);">${montoP} <span style="font-size:11px;font-weight:400;color:var(--text-tertiary);">· ${metodo}</span></div>
-                                <div style="font-size:11px;color:var(--text-secondary);">${p.fecha}${concepto ? ' · ' + concepto : ''}</div>
+                                <div style="font-size:11px;color:var(--text-secondary);">${p.fecha}${p.periodoHasta ? ' → cubre hasta <strong>' + p.periodoHasta + '</strong>' : ''}${concepto ? ' · ' + concepto : ''}</div>
                             </div>
                             <div style="display:flex;gap:2px;">
                                 <button onclick="generateRecibo(${p.id})" title="Generar recibo" style="background:rgba(34,197,94,.15);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px;color:#22c55e;">🧾</button>
@@ -3033,7 +3056,10 @@
                             <div style="font-size:15px;font-weight:700;color:var(--accent-purple);">${montoStr}/mes</div>
                             ${tenant.deuda ? `<div style="font-size:11px;color:#ef4444;">Deuda: ${formatCurrency(tenant.deuda)}</div>` : ''}
                         </div>
-                        <div style="background:${statusColor};color:white;padding:3px 9px;border-radius:4px;font-size:11px;font-weight:700;">${statusText}</div>
+                        <div style="text-align:center;">
+                            <div style="background:${statusColor};color:white;padding:3px 9px;border-radius:4px;font-size:11px;font-weight:700;">${statusText}</div>
+                            ${statusExtra}
+                        </div>
                         <button onclick="event.stopPropagation();openAddPagoFor(${tenant.id})" style="background:var(--accent-purple);color:white;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap;">+ Pago</button>
                         ${(tenant.whatsapp || tenant.tel) ? `<button onclick="event.stopPropagation();openWhatsApp(${tenant.id})" title="Enviar WhatsApp" style="background:rgba(37,211,102,.15);border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:14px;" >💬</button>` : ''}
                         <span style="color:var(--text-tertiary);font-size:14px;">▾</span>
@@ -3427,14 +3453,15 @@
                 { k: 'notas',     l: 'Notas',             t: 'area', full: true },
             ],
             pagos: [
-                { k: 'inquilino',  l: 'Inquilino',       t: 'dyn',  src: 'inquilinos',  lf: 'nombre', req: true },
-                { k: 'propiedad',  l: 'Propiedad',       t: 'dyn',  src: 'propiedades', lf: 'nombre' },
-                { k: 'fecha',      l: 'Fecha de pago',   t: 'date', req: true },
-                { k: 'monto',      l: 'Monto',           t: 'num',  req: true },
-                { k: 'moneda',     l: 'Moneda',          t: 'sel',  opts: ['ARS','USD'] },
-                { k: 'metodo',     l: 'Método de pago',  t: 'sel',  opts: ['Transferencia','Efectivo','Cheque','Otro'] },
-                { k: 'concepto',   l: 'Concepto',        t: 'text', ph: 'Alquiler marzo 2026', full: true },
-                { k: 'notas',      l: 'Notas',           t: 'area', full: true },
+                { k: 'inquilino',    l: 'Inquilino',                t: 'dyn',  src: 'inquilinos',  lf: 'nombre', req: true },
+                { k: 'propiedad',    l: 'Propiedad',                t: 'dyn',  src: 'propiedades', lf: 'nombre' },
+                { k: 'fecha',        l: 'Fecha de pago',            t: 'date', req: true },
+                { k: 'periodoHasta', l: 'Cubre hasta (MM/AAAA)',    t: 'text', ph: 'Ej: 02/2027 — si paga varios meses adelantados', full: true },
+                { k: 'monto',        l: 'Monto total',              t: 'num',  req: true },
+                { k: 'moneda',       l: 'Moneda',                   t: 'sel',  opts: ['ARS','USD'] },
+                { k: 'metodo',       l: 'Método de pago',           t: 'sel',  opts: ['Transferencia','Efectivo','Cheque','Otro'] },
+                { k: 'concepto',     l: 'Concepto',                 t: 'text', ph: 'Alquiler marzo 2026', full: true },
+                { k: 'notas',        l: 'Notas',                    t: 'area', full: true },
             ],
             proveedores: [
                 { k: 'nombre',    l: 'Nombre / Empresa',   t: 'text', req: true },
@@ -3643,6 +3670,7 @@
             else if (id === 'propertiesView') renderProperties();
             else if (id === 'ownersView')     renderOwners();
             else if (id === 'tenantsView')    renderTenants();
+            else if (id === 'contractsView')  renderContracts();
             else if (id === 'complaintView')  renderComplaints();
             else if (id === 'collectionsView')  renderCollections();
             else if (id === 'proveedoresView') renderProveedores();
@@ -3679,33 +3707,37 @@
             }
             const reader = new FileReader();
             reader.onload = function(e) {
-                // Comprimir la imagen con canvas (max 900px, JPEG 75%) para respetar cuota de localStorage
+                // Comprimir agresivamente: max 400px, JPEG 50% → ~50-150KB para Firestore
                 const img = new Image();
                 img.onload = function() {
-                    const MAX_PX = 900;
+                    const MAX_PX = 400;
                     let w = img.width, h = img.height;
-                    if (w > MAX_PX || h > MAX_PX) {
-                        if (w > h) { h = Math.round(h * MAX_PX / w); w = MAX_PX; }
-                        else       { w = Math.round(w * MAX_PX / h); h = MAX_PX; }
-                    }
+                    if (w > h) { if (w > MAX_PX) { h = Math.round(h * MAX_PX / w); w = MAX_PX; } }
+                    else       { if (h > MAX_PX) { w = Math.round(w * MAX_PX / h); h = MAX_PX; } }
                     const canvas = document.createElement('canvas');
                     canvas.width = w; canvas.height = h;
                     canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                    const compressed = canvas.toDataURL('image/jpeg', 0.75);
+                    const compressed = canvas.toDataURL('image/jpeg', 0.50);
+
+                    const kb = Math.round(compressed.length * 0.75 / 1024);
+                    if (kb > 700) {
+                        showToast('⚠️ Imagen demasiado pesada (' + kb + 'KB). Usá una foto más pequeña.', 'err');
+                        return;
+                    }
 
                     const prop = appData.propiedades.find(p => p.id === propId);
                     if (!prop) return;
                     prop.imagen = compressed;
 
-                    // Guardar foto en Firestore (cada imagen en su propio documento)
-                    _photosCache.prop[propId] = compressed;
-                    db.collection(FB_FOTOS).doc('prop_' + propId).set({ data: compressed })
-                        .then(() => showToast('Foto actualizada ✓ (guardada en la nube)'))
-                        .catch(err => {
-                            console.warn('No se pudo guardar imagen en la nube:', err);
-                            showToast('⚠️ Error al guardar la foto en la nube.', 'err');
-                        });
-                    persistAll(); // sube el resto a Firestore (sin imagen)
+                    // Guardar también en localStorage como caché local
+                    try {
+                        const imgs = JSON.parse(localStorage.getItem('rentacrm_images') || '{}');
+                        imgs[String(propId)] = compressed;
+                        localStorage.setItem('rentacrm_images', JSON.stringify(imgs));
+                    } catch(err) {}
+
+                    persistAll(); // ahora SÍ incluye imagen en Firestore
+                    showToast('Foto actualizada ✓ (guardada en la nube)');
                     rerender();
                 };
                 img.src = e.target.result;
@@ -3718,9 +3750,12 @@
             if (!prop) return;
             delete prop.imagen;
 
-            // Eliminar de Firestore
-            delete _photosCache.prop[propId];
-            db.collection(FB_FOTOS).doc('prop_' + propId).delete().catch(() => {});
+            // Eliminar de localStorage también
+            try {
+                const imgs = JSON.parse(localStorage.getItem('rentacrm_images') || '{}');
+                delete imgs[String(propId)];
+                localStorage.setItem('rentacrm_images', JSON.stringify(imgs));
+            } catch(err) {}
 
             persistAll();
             showToast('Foto eliminada');
@@ -3878,51 +3913,6 @@
             gasUpsert('contratos', contract);
             showToast('Archivo quitado');
             rerender();
-        }
-
-        // ── Vista previa de contrato adjunto ─────────────────────────────────────
-
-        function previewContractFile(contractId) {
-            var contract = appData.contratos.find(function(c) { return c.id === contractId; });
-            if (!contract || !contract.archivo || !contract.archivoNombre) {
-                showToast('No hay archivo adjunto', 'err');
-                return;
-            }
-            var overlay = document.getElementById('contractPreviewOverlay');
-            var titleEl = document.getElementById('contractPreviewTitle');
-            var bodyEl  = document.getElementById('contractPreviewBody');
-            var dlLink  = document.getElementById('contractPreviewDownload');
-            var fName   = contract.archivoNombre;
-            var dataUrl = contract.archivo;
-
-            titleEl.textContent = fName;
-            dlLink.href = dataUrl;
-            dlLink.download = fName;
-
-            var isPdf = fName.toLowerCase().endsWith('.pdf');
-            var isImg = /\.(png|jpe?g|gif|webp|bmp)$/i.test(fName);
-
-            if (isPdf) {
-                bodyEl.innerHTML = '<iframe src="' + dataUrl + '" style="width:100%;height:70vh;border:none;border-radius:0 0 16px 16px;background:#fff;" title="Vista previa PDF"></iframe>';
-            } else if (isImg) {
-                bodyEl.innerHTML = '<div style="padding:20px;text-align:center;width:100%;"><img src="' + dataUrl + '" alt="' + fName + '" style="max-width:100%;max-height:70vh;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.3);"></div>';
-            } else {
-                bodyEl.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-secondary);">'
-                    + '<div style="font-size:48px;margin-bottom:16px;">📋</div>'
-                    + '<div style="font-size:14px;font-weight:600;margin-bottom:8px;">Vista previa no disponible</div>'
-                    + '<div style="font-size:12px;color:var(--text-tertiary);">Solo archivos PDF e imágenes admiten previsualización.</div>'
-                    + '<div style="font-size:12px;color:var(--text-tertiary);margin-top:4px;">Usá el botón "Descargar" para ver el archivo.</div>'
-                    + '</div>';
-            }
-
-            overlay.style.display = 'flex';
-        }
-
-        function closeContractPreview() {
-            var overlay = document.getElementById('contractPreviewOverlay');
-            overlay.style.display = 'none';
-            var bodyEl = document.getElementById('contractPreviewBody');
-            bodyEl.innerHTML = '';
         }
 
         // ── Ajustes de Alquiler ───────────────────────────────────────────────────
@@ -5461,19 +5451,9 @@
         }
 
         // ── Servicios logo helpers (stored in localStorage) ──────────────
-        var _DEFAULT_SVC_LOGOS = {
-            'ABL': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCABkAGQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDjdtG2p9tG2vs/anyBBto21Pto20e1Ag20ban20baPagQbaNtT7aNtHtQINtG2p9tG2j2oEG2jbU+2jbR7UCDbRU+2ij2oE+2jbVjZRsrzfagV9tG2rGyjZR7UCvto21Y2UbKPagV9tG2rGyjZR7UCvto21Y2UbKPagV9tG2rGyjZR7UCvtoqxsoo9qBPto21Pto2153tQINtG2tfQtGu9c1FLHT0V53Ut8zbQABySaveJPCOq+HYYJdTiiWOZiitHJv5Azg+lL2papycedLQ5rbRtqykTSOqRqWdiAqqMkn0ArttO+F3iG8gWSRLa0yMhZ5Du/EKDih1rbjp0p1NIK5wG2jbXXeJPAus+H7Rrq9jge1UhTLFJkAk4GQcGotB8GatrunSX2nxwNbo5Ri8u05ABPGPej2y3uP2NRS5OV3OW20ba6Dw34a1DxHNPHpiRM8KBn8yTZwTgfyrdf4X+JVUkW9q3stwMn8xR7ZLqEaFSavGLaOC20ba0dR066028ktb+3eC4T7yOMH6+496q7aftTNpp2ZBtoqfbRR7URPto21Y20qRNI6pGpZ2IVVHcnoK872oHqHwY05LPT9S1y6+VMGJGPZF+Zz+ePyrUvJv+E6+GlzNsH2yJndVA6OhJA/FT+taN9PpXg/wbY6fqsMk8EieQ8UagmQkEueSOM5/OoPA3iLw5cXr6boVhLZPKDKVZAquQB6Mecfyp82p7sIxgo0G1qtV1uzivgtpsN14hubuZQ5tIQY89mY4z+QP50nj/AFrV9X8YzaRYTzRxRyi3hgik8sO+ByTkdz36Vo6PcQ+CviLqFrdfu9PuuFc9EVjuQ/QHKmtHxb4Iv73Xhrfhy5hDyssuC+0q4H3lOCDnFHN1OZQk6Hs4bp623OS1XR/Gdl4fu49UE7aWoDyCW4STbgggjkkc+ldr8IBjwPe/9fEv/oC1e8RR3tr8L7qDWZ1kv/s5WRy2dzFsjB4zxiqnwkGPBV6P+niX/wBAWjm6G1KkqdeKTfw9Tn/gWManqv8A1xj/APQjWnBa+Lv+FiSSxtfLpH2sk+bLmEw9wFJ9OmBVD4IDGpap/wBcY/8A0I1R8WeM/EFr4h1O0ttQaO3inZEVYkyqj3xmlz9TKE4Qw8JTb36Fr45G3bUtLVNv2pYn346hSRtz+O6vMdtXbuae8uHnupZJpnOWeRsk/jUW2l7U4K9X2tRztuV9tFWNtFHtTEn20qgqwZSQwOQQcEVNso2V53tQGzSzT48+aWXHTe5bH50yMvE4eJ2Rx0ZWII/EVLso2Ue1HcjleSZt00kkjYxl2LHH41Zs9S1CyTZZ311An92KZlH5A1Fso2Ue2BNp3Ql1cXF2++6nmnf1lcsf1pIp7iJCkU80aHkqkhUfkDTtlGyj2oXe4yGSWAkwSyRE9Sjlc/lTH3O5Z2ZmJyWY5J/GptlGyj2oEG2jbU+yjZR7URBtoqfbRR7UCxto21Y20qRNI6pGpZ2IVVHcnoK872oHqHwY05LPT9S1y6+VMGJGPZF+Zz+ePyrUvJv+E6+GlzNsH2yJndVA6OhJA/FT+taN9PpXg/wbY6fqsMk8EieQ8UagmQkEueSOM5/OoPA3iLw5cXr6boVhLZPKDKVZAquQB6Mecfyp82p7sIxgo0G1qtV1uzivgtpsN14hubuZQ5tIQY89mY4z+QP50nj/AFrV9X8YzaRYTzRxRyi3hgik8sO+ByTkdz36Vo6PcQ+CviLqFrdfu9PuuFc9EVjuQ/QHKmtHxb4Iv73Xhrfhy5hDyssuC+0q4H3lOCDnFHN1OZQk6Hs4bp623OS1XR/Gdl4fu49UE7aWoDyCW4STbgggjkkc+ldr8IBjwPe/9fEv/oC1e8RR3tr8L7qDWZ1kv/s5WRy2dzFsjB4zxiqnwkGPBV6P+niX/wBAWjm6G1KkqdeKTfw9Tn/gWManqv8A1xj/APQjWnBa+Lv+FiSSxtfLpH2sk+bLmEw9wFJ9OmBVD4IDGpap/wBcY/8A0I1R8WeM/EFr4h1O0ttQaO3inZEVYkyqj3xmlz9TKE4Qw8JTb36Fr45G3bUtLVNv2pYn346hSRtz+O6vMdtXbuae8uHnupZJpnOWeRsk/jUW2l7U4K9X2tRztuV9tFWNtFHtTEn20qgqwZSQwOQQcEVNso2V53tQGzSzT48+aWXHTe5bH50yMvE4eJ2Rx0ZWII/EVLso2Ue1HcjleSZt00kkjYxl2LHH41Zs9S1CyTZZ311An92KZlH5A1Fso2Ue2BNp3Ql1cXF2++6nmnf1lcsf1pIp7iJCkU80aHkqkhUfkDTtlGyj2oXe4yGSWAkwSyRE9Sjlc/lTH3O5Z2ZmJyWY5J/GptlGyj2oEG2jbU+yjZR7URBtoqfbRR7UCxto21Y20qRNI6pGpZ2IVVHcnoK872oHqHwY05LPT9S1y6+VMGJGPZF+Zz+ePyrUvJv+E6+GlzNsH2yJndVA6OhJA/FT+taN9PpXg/wbY6fqsMk8EieQ8UagmQkEueSOM5/OoPA3iLw5cXr6boVhLZPKDKVZAquQB6Mecfyp82p7sIxgo0G1qtV1uzivgtpsN14hubuZQ5tIQY89mY4z+QP50nj/AFrV9X8YzaRYTzRxRyi3hgik8sO+ByTkdz36Vo6PcQ+CviLqFrdfu9PuuFc9EVjuQ/QHKmtHxb4Iv73Xhrfhy5hDyssuC+0q4H3lOCDnFHN1OZQk6Hs4bp623OS1XR/Gdl4fu49UE7aWoDyCW4STbgggjkkc+ldr8IBjwPe/9fEv/oC1e8RR3tr8L7qDWZ1kv/s5WRy2dzFsjB4zxiqnwkGPBV6P+niX/wBAWjm6G1KkqdeKTfw9Tn/gWManqv8A1xj/APQjWnBa+Lv+FiSSxtfLpH2sk+bLmEw9wFJ9OmBVD4IDGpap/wBcY/8A0I1R8WeM/EFr4h1O0ttQaO3inZEVYkyqj3xmlz9TKE4Qw8JTb36Fr45G3bUtLVNv2pYn346hSRtz+O6vMdtXbuae8uHnupZJpnOWeRsk/jUW2l7U4K9X2tRztuV9tFWNtFHtTEn20qgqwZSQwOQQcEVNso2V53tQGzSzT48+aWXHTe5bH50yMvE4eJ2Rx0ZWII/EVLso2Ue1HcjleSZt00kkjYxl2LHH41Zs9S1CyTZZ311An92KZlH5A1Fso2Ue2BNp3Ql1cXF2++6nmnf1lcsf1pIp7iJCkU80aHkqkhUfkDTtlGyj2oXe4yGSWAkwSyRE9Sjlc/lTH3O5Z2ZmJyWY5J/GptlGyj2oEG2jbU+yjZR7URBtoqfbRR7UDm',
-            'Agua': 'data:image/jpeg;base64,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',
-            'Gas': 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAyAGQDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD6pooooAKKKKACiiigAooooAKKKKACiiigAooooAKo6zrGm6JZ/a9Yv7WxtdwTzbmURpuPQZPGeKvV5B+1CiS/D2xjmAMb6vaKwzjILMCPyzQB6XqfiLRdKsbe91PVrC0tLjHkzTzqiSZGRtJODxzx2rTVgwBUggjIIr5D+JfhrX7Twfqdv4hjmj0jwmVstImkyBdia4GJM9Dti2p9a6r4n+JNaj+Id9pdzrd1o+nQabDJppTVU02OSQqMyM7KRLhsjZ7UAfRk17awXMFvNcwxzz5EUbyANJjk7QeTj2qevl3xWf7R1L4U654w16az+2W88V1qNremGGMqvyyRPgBGfIyRjPA7V2fh21vdf+MXirTW8T64mk6XBYTQQW96QJCY1ILHn5TgkgY3bsmgD2+svW/EOjaEEOtatYaeH+59quEi3fTcRmvmSbxlrY0641Q+KtVTx8uu/ZU8PCX915XmYEf2fHK4/i/XvXRz3On6R8XPHc3jQ6VBq9xFGdCuNcXNp5W0/KCeOuAcc8H3oA9/i1fTpdKbU4r+0k05UaQ3STKYgo6tvBxgYPNGlatp+r2IvdKvra8tCSBNbyh0JHB5HHFfNWqeM7nxB8G7LRdN0mytdQ8QatNZR2ejxeWskEbB5XjVj1b1yB81a/w+uLfSpvH3gvWLa/8ADWk3tlLqlnFdbTLbwMmyYgKWyARngnoaAPcdN8V+HtUvzY6brul3d6M5ggu43k46/KDnitqvmn4ZazFoXjLwp4es5PB/ie1kDxwX+k2+y8s1CEb5SOmQcHPJ5/H6WFABRRRQAVDdWsF3GI7qCKZAwYLIgYAjocHvU1FAEV1bQXcJhuoYpojglJEDKcexpl1ZWt2qC6toZghyokjDbT7ZHFWKKAILuytbyERXdvDPEDkJLGGA/A0sNpbwzSTQwRRyyAK7qgDMBwASOuKmooAg+x2xu/tRt4ftOMebsG/Hpu60XdlbXiKt3bwzqpyBKgcA/jU9FAFf7DaeZDJ9mg8yAERN5YygPUKccfhTntLd7lbh4ImuFUoshQFgp6gHripqKAK1rp9nayvJa2sEMj/eaONVLfUgc1ZoooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD//2Q==',
-            'Luz': 'data:image/jpeg;base64,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'
-        };
         function _getSvcLogos() {
-            try {
-                var stored = JSON.parse(localStorage.getItem('rentacrm_svc_logos') || '{}');
-                // Merge defaults for any missing logos
-                var merged = Object.assign({}, _DEFAULT_SVC_LOGOS, stored);
-                return merged;
-            } catch(e) { return Object.assign({}, _DEFAULT_SVC_LOGOS); }
+            try { return JSON.parse(localStorage.getItem('rentacrm_svc_logos') || '{}'); }
+            catch(e) { return {}; }
         }
         function _getSvcLogo(tipo) { return _getSvcLogos()[tipo] || null; }
         function _setSvcLogo(tipo, dataUrl) {
@@ -6774,23 +6754,6 @@
                 <button onclick="closeAjusteOverlay()" style="background:none;border:none;color:var(--text-secondary);font-size:20px;cursor:pointer;padding:4px;">✕</button>
             </div>
             <div id="ajusteOverlayBody" style="padding:20px 22px;"></div>
-        </div>
-    </div>
-
-    <!-- Contract Preview Overlay -->
-    <div id="contractPreviewOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:1200;align-items:center;justify-content:center;" onclick="if(event.target===this)closeContractPreview()">
-        <div style="background:var(--bg-card);border-radius:16px;width:800px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;border:1px solid var(--border-color);box-shadow:0 20px 60px rgba(0,0,0,.6);">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-bottom:1px solid var(--border-color);flex-shrink:0;">
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <span style="font-size:18px;">📄</span>
-                    <span id="contractPreviewTitle" style="font-size:14px;font-weight:600;color:var(--text-primary);"></span>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px;">
-                    <a id="contractPreviewDownload" href="#" download="" style="padding:6px 14px;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;font-size:12px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:5px;">⬇ Descargar</a>
-                    <button onclick="closeContractPreview()" style="background:none;border:none;color:var(--text-secondary);font-size:22px;cursor:pointer;padding:4px;line-height:1;">✕</button>
-                </div>
-            </div>
-            <div id="contractPreviewBody" style="flex:1;overflow:auto;padding:0;min-height:300px;display:flex;align-items:center;justify-content:center;"></div>
         </div>
     </div>
 
