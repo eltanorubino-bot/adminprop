@@ -4721,7 +4721,15 @@
             const saldoBco= banco.reduce((s,m)=>s+(m.tipo==='Ingreso'?(m.monto||0):-(m.monto||0)),0);
             const saldoTotal = saldoEf + saldoBco;
 
-            const pd = d => { if (!d) return 0; const p = d.split('/'); return new Date(+p[2],+p[1]-1,+p[0]).getTime(); };
+            const pd = d => {
+                if (!d) return 0;
+                const p = d.split('/');
+                if (p.length < 3) return 0;
+                let y = +p[2];
+                if (y < 100) y += y < 50 ? 2000 : 1900; // año 2 dígitos: 26→2026
+                const day = +p[0] || 1, mon = (+p[1] || 1) - 1;
+                return new Date(y, mon, day).getTime();
+            };
             let filtered = _cajaFiltro === 'todas' ? [...caja] : caja.filter(m=>m.cuenta===_cajaFiltro);
             filtered.sort((a,b) => pd(a.fecha) - pd(b.fecha));
             // Compute running balance
@@ -7087,6 +7095,15 @@
 
 
         // ── Edición inline Caja ─────────────────────────────────────────────────
+
+        function cajaInlineCat(sel, id) {
+            const m = (appData.caja || []).find(x => x.id === id);
+            if (!m) return;
+            m.categoria = sel.value;
+            persistAll();
+            showToast('✓ Categoría actualizada');
+        }
+
         function cajaInlineEdit(td, id, campo) {
             if (td.querySelector('input')) return; // ya está editando
 
@@ -7197,7 +7214,15 @@
             // ── Excel-style table ───────────────────────────────────────────────
             let filtered = _cajaFiltro === 'todas' ? caja : caja.filter(m => m.cuenta === _cajaFiltro);
             // Saldo running: siempre en orden cronológico
-            const pd = d => { if (!d) return 0; const p = d.split('/'); return new Date(+p[2],+p[1]-1,+p[0]).getTime(); };
+            const pd = d => {
+                if (!d) return 0;
+                const p = d.split('/');
+                if (p.length < 3) return 0;
+                let y = +p[2];
+                if (y < 100) y += y < 50 ? 2000 : 1900; // año 2 dígitos: 26→2026
+                const day = +p[0] || 1, mon = (+p[1] || 1) - 1;
+                return new Date(y, mon, day).getTime();
+            };
             const cronological = [...filtered].sort((a,b) => pd(a.fecha) - pd(b.fecha));
             const saldoMap = new Map();
             let saldoAcc = 0;
@@ -7301,7 +7326,24 @@
                             <td style="${colStyle}font-weight:600;max-width:280px;word-break:break-word;white-space:normal;line-height:1.4;cursor:text;" 
                                 title="Doble clic para editar"
                                 ondblclick="cajaInlineEdit(this,${m.id},'concepto')">${m.concepto || '—'}</td>
-                            <td style="${colStyle}color:var(--text-secondary);">${m.categoria || '—'}</td>
+                            <td style="${colStyle}padding:6px 8px;">
+                                <select onchange="cajaInlineCat(this,${m.id})"
+                                    style="background:transparent;border:1px solid transparent;border-radius:6px;color:var(--text-secondary);font-size:12px;padding:3px 6px;cursor:pointer;width:100%;outline:none;transition:border .15s;"
+                                    onfocus="this.style.borderColor='var(--accent-purple)';this.style.background='var(--bg-secondary)';"
+                                    onblur="this.style.borderColor='transparent';this.style.background='transparent';">
+                                    <option value="">—</option>
+                                    <option value="Alquiler" ${m.categoria==='Alquiler'?'selected':''}>Alquiler</option>
+                                    <option value="Expensas" ${m.categoria==='Expensas'?'selected':''}>Expensas</option>
+                                    <option value="Honorarios" ${m.categoria==='Honorarios'?'selected':''}>Honorarios</option>
+                                    <option value="Mantenimiento" ${m.categoria==='Mantenimiento'?'selected':''}>Mantenimiento</option>
+                                    <option value="Servicios" ${m.categoria==='Servicios'?'selected':''}>Servicios</option>
+                                    <option value="ABL" ${m.categoria==='ABL'?'selected':''}>ABL</option>
+                                    <option value="Limpieza" ${m.categoria==='Limpieza'?'selected':''}>Limpieza</option>
+                                    <option value="Seguro" ${m.categoria==='Seguro'?'selected':''}>Seguro</option>
+                                    <option value="Impuesto" ${m.categoria==='Impuesto'?'selected':''}>Impuesto</option>
+                                    <option value="Otro" ${m.categoria==='Otro'?'selected':''}>Otro</option>
+                                </select>
+                            </td>
                             <td style="${colStyle}">
                                 <span style="display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:700;
                                     background:${m.cuenta==='Banco'?'rgba(79,117,192,0.15)':'rgba(34,197,94,0.12)'};
