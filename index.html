@@ -1724,11 +1724,7 @@
 
                 <!-- Inbox View -->
                 <div class="view" id="inboxView">
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📥</div>
-                        <div class="empty-state-title">Próximamente</div>
-                        <div class="empty-state-text">La sección de Bandeja estará disponible pronto</div>
-                    </div>
+                    <div id="inboxContent"></div>
                 </div>
 
                 <!-- Proveedores View -->
@@ -2420,6 +2416,7 @@
             else if (viewName === 'tareas')        renderTareas();
             else if (viewName === 'servicios')     renderServicios();
             else if (viewName === 'asistente')     renderAsistente();
+            else if (viewName === 'inbox')         renderInbox();
         }
 
         function updateBadges() {
@@ -3315,14 +3312,8 @@
                 const card = document.createElement('div');
                 card.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden;';
 
-                // Fila de acciones (fuera del área colapsable para evitar conflicto de clicks)
-                const waBtn2 = (tenant.whatsapp || tenant.tel)
-                    ? '<button onclick="openWhatsApp(' + tenant.id + ')" title="Enviar WhatsApp" style="background:rgba(37,211,102,.15);color:#25d366;border:1px solid rgba(37,211,102,.3);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:14px;flex-shrink:0;">💬</button>'
-                    : '';
-                const pagoBtn2 = '<button onclick="openAddPagoFor(' + tenant.id + ')" style="background:var(--accent-purple);color:white;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0;">+ Pago</button>';
-
                 card.innerHTML = `
-                    <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;" onclick="this.parentElement.querySelector('.pago-hist').classList.toggle('hidden')">
+                    <div class="cobr-row" style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;">
                         <div style="flex:1;">
                             <div style="font-weight:600;font-size:14px;color:var(--text-primary);">${tenant.nombre}</div>
                             <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">${prop?.nombre || '—'} · Último pago: ${tenant.ultimoPago || '—'} (${daysSincePay})</div>
@@ -3335,9 +3326,9 @@
                             <div style="background:${statusColor};color:white;padding:3px 9px;border-radius:4px;font-size:11px;font-weight:700;">${statusText}</div>
                             ${statusExtra}
                         </div>
-                        <div style="display:flex;gap:6px;align-items:center;" onclick="event.stopPropagation()">
-                            ${pagoBtn2}
-                            ${waBtn2}
+                        <div class="cobr-btns" style="display:flex;gap:6px;align-items:center;">
+                            <button class="cobr-pago-btn" style="background:var(--accent-purple);color:white;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap;">+ Pago</button>
+                            ${(tenant.whatsapp || tenant.tel) ? '<button class="cobr-wa-btn" style="background:rgba(37,211,102,.15);color:#25d366;border:1px solid rgba(37,211,102,.3);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:14px;">💬</button>' : ''}
                         </div>
                         <span style="color:var(--text-tertiary);font-size:14px;">▾</span>
                     </div>
@@ -3345,6 +3336,19 @@
                         <div style="font-size:11px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.06em;padding:8px 0 6px;">Historial de pagos (${tenantPagos.length})</div>
                         ${histHTML}
                     </div>`;
+
+                // Bind events con addEventListener para evitar conflictos de propagación
+                const cobrRow = card.querySelector('.cobr-row');
+                const cobrBtns = card.querySelector('.cobr-btns');
+                const pagoBtn = card.querySelector('.cobr-pago-btn');
+                const waBtn = card.querySelector('.cobr-wa-btn');
+                const tid = tenant.id;
+
+                cobrRow.addEventListener('click', () => card.querySelector('.pago-hist').classList.toggle('hidden'));
+                cobrBtns.addEventListener('click', e => e.stopPropagation());
+                pagoBtn.addEventListener('click', () => openAddPagoFor(tid));
+                if (waBtn) waBtn.addEventListener('click', () => openWhatsApp(tid));
+
                 list.appendChild(card);
             });
         }
@@ -6718,6 +6722,150 @@
             showToast('Backup exportado ✓');
         }
 
+
+        // ── BANDEJA — Plantillas WhatsApp ──────────────────────────────────────
+        let _inboxTab = 'plantillas';
+
+        function renderInbox() {
+            const el = document.getElementById('inboxContent');
+            if (!el) return;
+
+            const templates = appData.waTemplates || [];
+
+            const tabs = [
+                { id: 'plantillas', label: '💬 Plantillas WA', count: templates.length }
+            ];
+
+            const tabsHTML = tabs.map(t =>
+                '<button onclick="switchInboxTab(\'' + t.id + '\')" id="inboxTab_' + t.id + '" style="padding:8px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;">' +
+                t.label + ' <span style="background:rgba(255,255,255,.15);padding:1px 7px;border-radius:10px;font-size:11px;margin-left:4px;">' + t.count + '</span></button>'
+            ).join('');
+
+            el.innerHTML =
+                '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">' +
+                    '<h2 style="font-size:20px;font-weight:700;color:var(--text-primary);">📥 Bandeja</h2>' +
+                '</div>' +
+                '<div style="display:flex;gap:8px;margin-bottom:20px;background:var(--bg-card);padding:6px;border-radius:10px;border:1px solid var(--border);width:fit-content;">' +
+                    tabsHTML +
+                '</div>' +
+                '<div id="inboxTabContent"></div>';
+
+            switchInboxTab(_inboxTab);
+        }
+
+        function switchInboxTab(tab) {
+            _inboxTab = tab;
+            // Estilo de tabs activo/inactivo
+            ['plantillas'].forEach(t => {
+                const btn = document.getElementById('inboxTab_' + t);
+                if (!btn) return;
+                if (t === tab) {
+                    btn.style.cssText = 'padding:8px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;background:var(--accent-purple);color:white;';
+                } else {
+                    btn.style.cssText = 'padding:8px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;background:transparent;color:var(--text-secondary);';
+                }
+            });
+            if (tab === 'plantillas') renderInboxPlantillas();
+        }
+
+        function renderInboxPlantillas() {
+            const el = document.getElementById('inboxTabContent');
+            if (!el) return;
+            const templates = appData.waTemplates || [];
+
+            const grupos = {};
+            templates.forEach((t, i) => {
+                const key = t.tipo;
+                if (!grupos[key]) grupos[key] = [];
+                grupos[key].push({ ...t, _idx: i });
+            });
+
+            let html =
+                '<div style="display:flex;justify-content:flex-end;margin-bottom:16px;">' +
+                    '<button onclick="openAddPlantilla()" style="background:var(--accent-purple);color:white;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;">+ Nueva plantilla</button>' +
+                '</div>';
+
+            if (templates.length === 0) {
+                html += '<div class="empty-state"><div class="empty-state-icon">💬</div><div class="empty-state-title">Sin plantillas</div><div class="empty-state-text">Creá tu primera plantilla de WhatsApp</div></div>';
+            } else {
+                Object.keys(grupos).forEach(tipo => {
+                    html += '<div style="margin-bottom:24px;">' +
+                        '<div style="font-size:13px;font-weight:800;color:var(--text-primary);margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--border);">' + tipo + '</div>';
+                    grupos[tipo].forEach(t => {
+                        const preview = (t.texto || '').replace(/\n/g, ' ').slice(0, 120) + ((t.texto||'').length > 120 ? '…' : '');
+                        html +=
+                            '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start;">' +
+                                '<div style="flex:1;">' +
+                                    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
+                                        '<span style="font-size:11px;font-weight:700;color:var(--accent-purple);background:rgba(124,58,237,.12);padding:2px 8px;border-radius:10px;">' + (t.destinatario || '—') + '</span>' +
+                                    '</div>' +
+                                    '<div style="font-size:13px;color:var(--text-secondary);line-height:1.4;">' + preview + '</div>' +
+                                '</div>' +
+                                '<div style="display:flex;gap:6px;flex-shrink:0;">' +
+                                    '<button onclick="openEditPlantilla(' + t._idx + ')" style="background:rgba(59,130,246,.15);color:#3b82f6;border:1px solid rgba(59,130,246,.3);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;">✏️ Editar</button>' +
+                                    '<button onclick="deletePlantilla(' + t._idx + ')" style="background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.25);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;">🗑️</button>' +
+                                '</div>' +
+                            '</div>';
+                    });
+                    html += '</div>';
+                });
+            }
+
+            el.innerHTML = html;
+        }
+
+        function openAddPlantilla() {
+            _plantillaEditIdx = null;
+            document.getElementById('plantillaModalTitle').textContent = 'Nueva plantilla';
+            document.getElementById('f_plt_tipo').value = '';
+            document.getElementById('f_plt_dest').value = 'Inquilino individual';
+            document.getElementById('f_plt_texto').value = '';
+            document.getElementById('plantillaOverlay').classList.add('active');
+        }
+
+        function openEditPlantilla(idx) {
+            const t = (appData.waTemplates || [])[idx];
+            if (!t) return;
+            _plantillaEditIdx = idx;
+            document.getElementById('plantillaModalTitle').textContent = 'Editar plantilla';
+            document.getElementById('f_plt_tipo').value = t.tipo || '';
+            document.getElementById('f_plt_dest').value = t.destinatario || '';
+            document.getElementById('f_plt_texto').value = t.texto || '';
+            document.getElementById('plantillaOverlay').classList.add('active');
+        }
+
+        function savePlantilla() {
+            const tipo   = document.getElementById('f_plt_tipo').value.trim();
+            const dest   = document.getElementById('f_plt_dest').value.trim();
+            const texto  = document.getElementById('f_plt_texto').value.trim();
+            if (!tipo || !texto) { showToast('Completá el tipo y el mensaje', 'err'); return; }
+            if (!appData.waTemplates) appData.waTemplates = [];
+            if (_plantillaEditIdx !== null) {
+                appData.waTemplates[_plantillaEditIdx] = { tipo, destinatario: dest, texto };
+                showToast('Plantilla actualizada ✓');
+            } else {
+                appData.waTemplates.push({ tipo, destinatario: dest, texto });
+                showToast('Plantilla creada ✓');
+            }
+            persistAll();
+            document.getElementById('plantillaOverlay').classList.remove('active');
+            renderInbox();
+        }
+
+        function deletePlantilla(idx) {
+            if (!confirm('¿Eliminar esta plantilla?')) return;
+            appData.waTemplates.splice(idx, 1);
+            persistAll();
+            showToast('Plantilla eliminada');
+            renderInbox();
+        }
+
+        function closePlantillaModal() {
+            document.getElementById('plantillaOverlay').classList.remove('active');
+        }
+
+        let _plantillaEditIdx = null;
+
         function renderTareas() {
             const container = document.getElementById('tareasContent');
             if (!container) return;
@@ -7148,6 +7296,42 @@
                         <button class="btn-cancel" onclick="closeWaModal()">Cancelar</button>
                         <button class="btn-save" onclick="sendWhatsApp()" style="background:#25d366;">💬 Abrir WhatsApp</button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ── PLANTILLA WA MODAL ─────────────────────────────────────────────── -->
+    <div class="crud-overlay" id="plantillaOverlay">
+        <div class="crud-modal" style="max-width:560px;">
+            <div class="crud-header">
+                <h3 id="plantillaModalTitle">Nueva plantilla</h3>
+                <button class="crud-close" onclick="closePlantillaModal()">✕</button>
+            </div>
+            <div class="crud-body" style="padding:20px;">
+                <div style="margin-bottom:14px;">
+                    <label class="flabel">Tipo / Nombre de la plantilla</label>
+                    <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:6px;">Podés usar emojis. Ej: 💰 Recordatorio de pago</div>
+                    <input id="f_plt_tipo" class="finput" type="text" placeholder="💰 Recordatorio de pago">
+                </div>
+                <div style="margin-bottom:14px;">
+                    <label class="flabel">Destinatario</label>
+                    <select id="f_plt_dest" class="finput">
+                        <option value="Inquilino individual">Inquilino individual</option>
+                        <option value="Grupo general">Grupo general</option>
+                        <option value="Propietario">Propietario</option>
+                        <option value="Proveedor">Proveedor</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:20px;">
+                    <label class="flabel">Mensaje</label>
+                    <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:6px;">Variables disponibles: [NOMBRE] [MES] [MONTO] [FECHA]</div>
+                    <textarea id="f_plt_texto" class="finput" style="min-height:180px;resize:vertical;line-height:1.6;" placeholder="Hola [NOMBRE], te escribimos desde la administración..."></textarea>
+                </div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button class="btn-cancel" onclick="closePlantillaModal()">Cancelar</button>
+                    <button class="btn-save" onclick="savePlantilla()">💾 Guardar</button>
                 </div>
             </div>
         </div>
