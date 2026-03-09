@@ -1206,10 +1206,10 @@
         .crud-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.75);
             backdrop-filter: blur(8px);
-            display: flex; align-items: center; justify-content: center;
+            display: none; align-items: center; justify-content: center;
             z-index: 1000; padding: 20px;
         }
-        .crud-overlay.active { opacity: 1; pointer-events: all; }
+        .crud-overlay.active { display: flex; }
         .crud-modal {
             background: var(--bg-card); border: 1px solid var(--border-color);
             border-radius: 14px; width: 560px; max-width: 96vw; max-height: 88vh;
@@ -1475,10 +1475,10 @@
 
         .wa-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-            display: flex; align-items: center; justify-content: center;
-            z-index: 1100; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+            display: none; align-items: center; justify-content: center;
+            z-index: 1100; transition: opacity 0.2s;
         }
-        .wa-overlay.active { opacity: 1; pointer-events: all; }
+        .wa-overlay.active { display: flex; }
         .wa-modal {
             background: var(--bg-card); border: 1px solid var(--border);
             border-radius: 14px; width: 680px; max-width: 96vw; max-height: 90vh;
@@ -7649,7 +7649,7 @@
 
 
     <!-- ── PLANTILLA WA MODAL ─────────────────────────────────────────────── -->
-    <div class="crud-overlay" id="plantillaOverlay" style="display:none;">
+    <div class="crud-overlay" id="plantillaOverlay">
         <div class="crud-modal" style="max-width:560px;">
             <div class="crud-header">
                 <h3 id="plantillaModalTitle">Nueva plantilla</h3>
