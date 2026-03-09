@@ -7285,6 +7285,7 @@
 
                 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
                 let lastMesKey = null;
+                let lastMesSaldo = null;
 
                 rows.forEach(({ m, isIng, val, saldo }) => {
                     // Separador de mes
@@ -7292,6 +7293,18 @@
                         const parts = m.fecha.split('/');
                         const mesKey = parts[2] + '-' + parts[1]; // YYYY-MM
                         if (mesKey !== lastMesKey) {
+                            // Fila de cierre del mes anterior (si existe)
+                            if (lastMesKey && lastMesSaldo !== null) {
+                                const saldoCierre = lastMesSaldo;
+                                const saldoCierreColor = saldoCierre >= 0 ? '#22c55e' : '#ef4444';
+                                tableHTML += `
+                        <tr>
+                            <td colspan="8" style="padding:6px 14px 8px;background:rgba(124,58,237,0.06);border-bottom:2px solid var(--accent-purple);text-align:right;">
+                                <span style="font-size:11px;color:var(--text-tertiary);margin-right:8px;">SALDO AL CIERRE DEL MES</span>
+                                <span style="font-size:14px;font-weight:800;color:${saldoCierreColor};">${formatCurrency(saldoCierre)}</span>
+                            </td>
+                        </tr>`;
+                            }
                             lastMesKey = mesKey;
                             const mesNombre = MESES[parseInt(parts[1], 10) - 1] + ' ' + parts[2];
                             // Calcular totales del mes para este filtro
@@ -7317,6 +7330,7 @@
                         </tr>`;
                         }
                     }
+                    lastMesSaldo = row.saldo; // tracking del último saldo del mes
 
                     const rowBg  = isIng ? 'rgba(34,197,94,0.04)' : 'rgba(239,68,68,0.04)';
                     const saldoColor = saldo >= 0 ? '#22c55e' : '#ef4444';
@@ -7369,6 +7383,12 @@
                         </tr>`;
                 });
 
+                // Cierre del último mes
+                if (lastMesKey && lastMesSaldo !== null) {
+                    const saldoCierre = lastMesSaldo;
+                    const saldoCierreColor = saldoCierre >= 0 ? '#22c55e' : '#ef4444';
+                    tableHTML += `<tr><td colspan="8" style="padding:6px 14px 8px;background:rgba(124,58,237,0.06);border-bottom:2px solid var(--accent-purple);text-align:right;"><span style="font-size:11px;color:var(--text-tertiary);margin-right:8px;">SALDO AL CIERRE DEL MES</span><span style="font-size:14px;font-weight:800;color:${saldoCierreColor};">${formatCurrency(saldoCierre)}</span></td></tr>`;
+                }
                 tableHTML += `</tbody></table>`;
                 wrap.innerHTML = tableHTML;
             }
