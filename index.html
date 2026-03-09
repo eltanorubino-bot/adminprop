@@ -6905,7 +6905,7 @@
             document.getElementById('f_plt_tipo').value = '';
             document.getElementById('f_plt_dest').value = 'Inquilino individual';
             document.getElementById('f_plt_texto').value = '';
-            document.getElementById('plantillaOverlay').classList.add('active');
+            document.getElementById('plantillaOverlay').style.display = 'flex';
         }
 
         function openEditPlantilla(idx) {
@@ -6916,7 +6916,7 @@
             document.getElementById('f_plt_tipo').value = t.tipo || '';
             document.getElementById('f_plt_dest').value = t.destinatario || '';
             document.getElementById('f_plt_texto').value = t.texto || '';
-            document.getElementById('plantillaOverlay').classList.add('active');
+            document.getElementById('plantillaOverlay').style.display = 'flex';
         }
 
         function savePlantilla() {
@@ -6933,7 +6933,7 @@
                 showToast('Plantilla creada ✓');
             }
             persistAll();
-            document.getElementById('plantillaOverlay').classList.remove('active');
+            document.getElementById('plantillaOverlay').style.display = 'none';
             renderInbox();
         }
 
@@ -6946,7 +6946,7 @@
         }
 
         function closePlantillaModal() {
-            document.getElementById('plantillaOverlay').classList.remove('active');
+            document.getElementById('plantillaOverlay').style.display = 'none';
         }
 
         let _plantillaEditIdx = null;
@@ -7649,7 +7649,7 @@
 
 
     <!-- ── PLANTILLA WA MODAL ─────────────────────────────────────────────── -->
-    <div class="crud-overlay" id="plantillaOverlay">
+    <div class="crud-overlay" id="plantillaOverlay" style="display:none;">
         <div class="crud-modal" style="max-width:560px;">
             <div class="crud-header">
                 <h3 id="plantillaModalTitle">Nueva plantilla</h3>
