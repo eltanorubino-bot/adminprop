@@ -4121,6 +4121,31 @@
         }
 
         // ── Contract file upload ──────────────────────────────────────────────
+        function previewContractFile(contractId) {
+            const contract = appData.contratos.find(c => c.id === contractId);
+            if (!contract || !contract.archivo) { showToast('No hay archivo adjunto', 'err'); return; }
+            const isPdf = contract.archivoNombre && contract.archivoNombre.toLowerCase().endsWith('.pdf');
+            if (isPdf) {
+                // Abrir PDF en nueva pestaña
+                const win = window.open();
+                win.document.write('<iframe src="' + contract.archivo + '" style="width:100%;height:100vh;border:none;"></iframe>');
+            } else {
+                // Para Word u otros: forzar descarga
+                downloadContractFile(contractId);
+                showToast('Abriendo ' + contract.archivoNombre);
+            }
+        }
+
+        function downloadContractFile(contractId) {
+            const contract = appData.contratos.find(c => c.id === contractId);
+            if (!contract || !contract.archivo) { showToast('No hay archivo adjunto', 'err'); return; }
+            const a = document.createElement('a');
+            a.href = contract.archivo;
+            a.download = contract.archivoNombre || 'contrato';
+            a.click();
+            showToast('Descargando ' + (contract.archivoNombre || 'archivo'));
+        }
+
         function uploadContractFile(event, contractId) {
             const file = event.target.files[0];
             if (!file) return;
