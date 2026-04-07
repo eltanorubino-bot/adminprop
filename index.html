@@ -3042,9 +3042,14 @@
                     }
                 } catch(e) {}
 
-                const isAlDia = tenant.estado === 'al_dia';
+                const autoMoroso = _isAutoMoroso(tenant);
+                const isMoroso = tenant.estado === 'moroso' || autoMoroso;
+                const _hasAdel = tenant.pagoAdelantadoHasta && tenant.pagoAdelantadoHasta.trim().length > 0;
+                const isAlDia = !isMoroso;
                 const statusColor = isAlDia ? '#22c55e' : '#ef4444';
-                const statusText  = isAlDia ? 'AL DÍA' : 'MOROSO';
+                const statusText  = isMoroso
+                    ? (tenant.estado === 'moroso' ? 'MOROSO' : 'SIN PAGO')
+                    : (_hasAdel ? 'ADELANTADO' : 'AL DÍA');
                 const montoStr = tenant.moneda === 'USD'
                     ? 'USD ' + (tenant.monto || 0).toLocaleString('es-AR')
                     : formatCurrency(tenant.monto);
