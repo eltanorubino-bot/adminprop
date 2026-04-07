@@ -1806,41 +1806,86 @@
             return colors[initial.charCodeAt(0) % colors.length];
         }
 
-        // ── Auto-moroso: returns true if tenant has no payment registered this month
-        //    and today is past the 5th (grace period)
-        //    Respeta pagos adelantados (campo pagoAdelantadoHasta = "MM/AAAA")
+        // ── Auto-moroso: returns true if tenant has no payment registered
+        //    Respeta: periodicidad del contrato, pagos adelantados, grace period (día 5)
         function _isAutoMoroso(tenant) {
-            const today = new Date();
-            if (today.getDate() <= 5) return false; // still within grace period
-            if (tenant.estado === 'al_dia' || tenant.estado === 'moroso') {
-                // Only auto-detect if not already manually marked
-                if (tenant.estado === 'moroso') return false; // already manual moroso
-            }
-            const mm   = String(today.getMonth()+1).padStart(2,'0');
-            const yyyy = today.getFullYear();
-            const mesActual = mm + '/' + yyyy;
+            var today = new Date();
+            if (today.getDate() <= 5) return false; // grace period
+            if (tenant.estado === 'moroso') return false; // ya marcado manualmente
 
-            // ── Verificar pago adelantado ──
+            var curMM = today.getMonth() + 1;
+            var curYY = today.getFullYear();
+            var mesActual = String(curMM).padStart(2,'0') + '/' + curYY;
+
+            // ── Verificar pago adelantado (campo directo en inquilino) ──
             if (tenant.pagoAdelantadoHasta) {
                 var adParts = tenant.pagoAdelantadoHasta.trim().split('/');
                 if (adParts.length === 2) {
                     var adMM = parseInt(adParts[0], 10);
                     var adYY = parseInt(adParts[1], 10);
-                    var curMM = today.getMonth() + 1;
-                    var curYY = today.getFullYear();
-                    // Si el mes actual está cubierto por el adelanto, no es moroso
                     if (adYY > curYY || (adYY === curYY && adMM >= curMM)) {
                         return false;
                     }
                 }
             }
 
-            const parseMonthYear = function(d) {
+            // ── Verificar periodicidad del contrato ──
+            // Si el contrato no es mensual, solo chequear en los meses que toca pagar
+            var contrato = (appData.contratos||[]).find(function(c) {
+                return Number(c.inquilino) === Number(tenant.id) && c.estado !== 'vencido';
+            });
+            if (contrato && contrato.periodicidadPago && contrato.periodicidadPago !== 'Mensual') {
+                var periodoMeses = {
+                    'Bimestral': 2, 'Trimestral': 3, 'Semestral': 6, 'Anual': 12
+                };
+                var mesesPeriodo = periodoMeses[contrato.periodicidadPago] || 1;
+                // Calcular desde qué mes empieza el contrato para saber en qué meses toca pagar
+                var inicioDate = null;
+                if (contrato.inicio) {
+                    var iParts = contrato.inicio.split('/');
+                    if (iParts.length === 3) {
+                        inicioDate = new Date(+iParts[2], +iParts[1]-1, +iParts[0]);
+                    }
+                }
+                if (inicioDate) {
+                    var mesInicio = inicioDate.getMonth(); // 0-based
+                    var mesActualIdx = today.getMonth(); // 0-based
+                    // Calcular diferencia en meses desde inicio
+                    var diffMeses = (curYY - inicioDate.getFullYear()) * 12 + (mesActualIdx - mesInicio);
+                    // Si no es un mes de pago según la periodicidad, no es moroso
+                    if (diffMeses % mesesPeriodo !== 0) {
+                        return false;
+                    }
+                } else {
+                    // Sin fecha de inicio, no podemos calcular — no marcar moroso
+                    return false;
+                }
+            }
+
+            // ── Verificar si hay pago registrado este mes ──
+            var parseMonthYear = function(d) {
                 if (!d || d === '—') return null;
                 var p = d.split('/');
                 return p.length === 3 ? p[1] + '/' + p[2] : null;
             };
-            const hasPago = (appData.pagos||[]).some(function(p) {
+            // Para contratos no mensuales, buscar pago en ventana del período actual
+            if (contrato && contrato.periodicidadPago && contrato.periodicidadPago !== 'Mensual') {
+                var periodoM2 = {'Bimestral':2,'Trimestral':3,'Semestral':6,'Anual':12}[contrato.periodicidadPago] || 1;
+                // Buscar si hay algún pago en los últimos N meses del período
+                var hasPagoPeriodo = (appData.pagos||[]).some(function(p) {
+                    if (Number(p.inquilino) !== Number(tenant.id)) return false;
+                    var pm = parseMonthYear(p.fecha);
+                    if (!pm) return false;
+                    var pmParts = pm.split('/');
+                    var pMM = parseInt(pmParts[0], 10);
+                    var pYY = parseInt(pmParts[1], 10);
+                    var diffP = (curYY - pYY) * 12 + (curMM - pMM);
+                    return diffP >= 0 && diffP < periodoM2;
+                });
+                return !hasPagoPeriodo;
+            }
+
+            var hasPago = (appData.pagos||[]).some(function(p) {
                 return Number(p.inquilino) === Number(tenant.id) &&
                     parseMonthYear(p.fecha) === mesActual;
             });
@@ -3332,6 +3377,7 @@
                 { k: 'fin',             l: 'Vencimiento',               t: 'date' },
                 { k: 'monto',           l: 'Monto mensual',             t: 'num' },
                 { k: 'moneda',          l: 'Moneda',                    t: 'sel',  opts: ['ARS','USD'] },
+                { k: 'periodicidadPago',l: 'Periodicidad de pago',      t: 'sel',  opts: ['Mensual','Bimestral','Trimestral','Semestral','Anual'] },
                 { k: 'estado',          l: 'Estado',                    t: 'sel',  opts: ['activo','verbal','vencido'] },
                 { k: 'indiceAjuste',    l: 'Índice de ajuste',          t: 'sel',  opts: ['IPC','ICL','RIPTE','Fijo %','Sin ajuste'] },
                 { k: 'periodoAjuste',   l: 'Período de ajuste',         t: 'sel',  opts: ['Mensual','Trimestral','Cuatrimestral','Semestral','Anual'] },
