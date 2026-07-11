@@ -1480,31 +1480,99 @@
             animation:loginCardIn 0.5s cubic-bezier(.16,1,.3,1);">
             <div style="font-size:40px;margin-bottom:12px;display:inline-block;animation:logoSpin 5s ease-in-out infinite;">🏠</div>
             <div style="font-size:20px;font-weight:800;color:#222222;margin-bottom:4px;">Manzanares 4559</div>
-            <div style="font-size:13px;color:#717171;margin-bottom:28px;">Gestión del Edificio</div>
-            <input id="loginInput" type="password" placeholder="Contraseña"
-                onkeydown="if(event.key==='Enter') checkLogin()"
-                style="
-                    width:100%;box-sizing:border-box;
-                    padding:12px 16px;border-radius:12px;
-                    border:1px solid #dddddd;background:#ffffff;
-                    color:#222222;font-size:15px;
-                    outline:none;margin-bottom:12px;
-                    transition:border .2s, box-shadow .2s;"
-                onfocus="this.style.borderColor='#ff385c';this.style.boxShadow='0 0 0 3px rgba(255,56,92,0.15)'"
-                onblur="this.style.borderColor='#dddddd';this.style.boxShadow='none'">
-            <div id="loginError" style="color:#e0234f;font-size:12px;min-height:18px;margin-bottom:8px;"></div>
-            <button onclick="checkLogin()" style="
-                width:100%;padding:12px;border-radius:12px;border:none;
-                background:linear-gradient(135deg,#ff385c,#d70466);
-                color:white;font-size:15px;font-weight:700;
-                cursor:pointer;transition:opacity .2s, transform .15s;"
-                onmouseover="this.style.opacity='.9'"
-                onmouseout="this.style.opacity='1'"
-                onmousedown="this.style.transform='scale(0.97)'"
-                onmouseup="this.style.transform='scale(1)'">
-                Ingresar
-            </button>
+            <div style="font-size:13px;color:#717171;margin-bottom:20px;">Gestión del Edificio</div>
+
+            <div style="display:flex;background:#f7f7f7;border-radius:12px;padding:4px;margin-bottom:20px;">
+                <button id="roleBtnAdmin" onclick="setLoginRole('admin')" style="
+                    flex:1;padding:9px 0;border:none;border-radius:9px;cursor:pointer;
+                    font-size:13px;font-weight:700;transition:all .2s;
+                    background:#ffffff;color:#222222;box-shadow:0 1px 4px rgba(0,0,0,0.10);">Administrador</button>
+                <button id="roleBtnTenant" onclick="setLoginRole('tenant')" style="
+                    flex:1;padding:9px 0;border:none;border-radius:9px;cursor:pointer;
+                    font-size:13px;font-weight:700;transition:all .2s;
+                    background:transparent;color:#717171;">Inquilino</button>
+            </div>
+
+            <div id="adminLoginForm">
+                <input id="loginInput" type="password" placeholder="Contraseña"
+                    onkeydown="if(event.key==='Enter') checkLogin()"
+                    style="
+                        width:100%;box-sizing:border-box;
+                        padding:12px 16px;border-radius:12px;
+                        border:1px solid #dddddd;background:#ffffff;
+                        color:#222222;font-size:15px;
+                        outline:none;margin-bottom:12px;
+                        transition:border .2s, box-shadow .2s;"
+                    onfocus="this.style.borderColor='#ff385c';this.style.boxShadow='0 0 0 3px rgba(255,56,92,0.15)'"
+                    onblur="this.style.borderColor='#dddddd';this.style.boxShadow='none'">
+                <div id="loginError" style="color:#e0234f;font-size:12px;min-height:18px;margin-bottom:8px;"></div>
+                <button onclick="checkLogin()" style="
+                    width:100%;padding:12px;border-radius:12px;border:none;
+                    background:linear-gradient(135deg,#ff385c,#d70466);
+                    color:white;font-size:15px;font-weight:700;
+                    cursor:pointer;transition:opacity .2s, transform .15s;"
+                    onmouseover="this.style.opacity='.9'"
+                    onmouseout="this.style.opacity='1'"
+                    onmousedown="this.style.transform='scale(0.97)'"
+                    onmouseup="this.style.transform='scale(1)'">
+                    Ingresar
+                </button>
+            </div>
+
+            <div id="tenantLoginForm" style="display:none;">
+                <input id="tenantUserInput" type="text" placeholder="Usuario"
+                    onkeydown="if(event.key==='Enter') document.getElementById('tenantPassInput').focus()"
+                    style="
+                        width:100%;box-sizing:border-box;
+                        padding:12px 16px;border-radius:12px;
+                        border:1px solid #dddddd;background:#ffffff;
+                        color:#222222;font-size:15px;
+                        outline:none;margin-bottom:10px;
+                        transition:border .2s, box-shadow .2s;"
+                    onfocus="this.style.borderColor='#ff385c';this.style.boxShadow='0 0 0 3px rgba(255,56,92,0.15)'"
+                    onblur="this.style.borderColor='#dddddd';this.style.boxShadow='none'">
+                <input id="tenantPassInput" type="password" placeholder="Contraseña"
+                    onkeydown="if(event.key==='Enter') checkTenantLogin()"
+                    style="
+                        width:100%;box-sizing:border-box;
+                        padding:12px 16px;border-radius:12px;
+                        border:1px solid #dddddd;background:#ffffff;
+                        color:#222222;font-size:15px;
+                        outline:none;margin-bottom:12px;
+                        transition:border .2s, box-shadow .2s;"
+                    onfocus="this.style.borderColor='#ff385c';this.style.boxShadow='0 0 0 3px rgba(255,56,92,0.15)'"
+                    onblur="this.style.borderColor='#dddddd';this.style.boxShadow='none'">
+                <div id="tenantLoginError" style="color:#e0234f;font-size:12px;min-height:18px;margin-bottom:8px;"></div>
+                <button onclick="checkTenantLogin()" style="
+                    width:100%;padding:12px;border-radius:12px;border:none;
+                    background:linear-gradient(135deg,#ff385c,#d70466);
+                    color:white;font-size:15px;font-weight:700;
+                    cursor:pointer;transition:opacity .2s, transform .15s;"
+                    onmouseover="this.style.opacity='.9'"
+                    onmouseout="this.style.opacity='1'"
+                    onmousedown="this.style.transform='scale(0.97)'"
+                    onmouseup="this.style.transform='scale(1)'">
+                    Ingresar
+                </button>
+            </div>
+
             <div style="font-size:11px;color:#b0b0b0;margin-top:20px;">Acceso restringido · Solo personal autorizado</div>
+        </div>
+    </div>
+
+    <div id="tenantPortal" style="display:none;height:100vh;overflow-y:auto;background:var(--bg-tertiary);font-family:'Plus Jakarta Sans','Inter',sans-serif;">
+        <div style="max-width:720px;margin:0 auto;padding:24px 20px 60px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:26px;">🏠</span>
+                    <div>
+                        <div style="font-weight:800;font-size:16px;color:var(--text-primary);">Manzanares 4559</div>
+                        <div style="font-size:12px;color:var(--text-tertiary);" id="tenantPortalSubtitle">Portal de Inquilinos</div>
+                    </div>
+                </div>
+                <button onclick="tenantLogout()" style="background:#fff;border:1px solid var(--border-color);color:var(--text-secondary);padding:8px 14px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;">Salir</button>
+            </div>
+            <div id="tenantPortalContent"></div>
         </div>
     </div>
 
@@ -1753,11 +1821,7 @@
 
                 <!-- Inbox View -->
                 <div class="view" id="inboxView">
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📥</div>
-                        <div class="empty-state-title">Próximamente</div>
-                        <div class="empty-state-text">La sección de Bandeja estará disponible pronto</div>
-                    </div>
+                    <div id="inboxContent"></div>
                 </div>
 
                 <!-- Proveedores View -->
@@ -2017,7 +2081,8 @@
             expensasCobros: [],
             ajustes: [],
             servicios: [],
-            tareas: []
+            tareas: [],
+            mensajes: []
         };
 
         function getDateDaysAgo(days) {
@@ -2177,7 +2242,7 @@
         const FB_COL = 'manzanares4559'; // colección raíz en Firestore
 
         const FB_KEYS = ['propietarios','propiedades','inquilinos','contratos',
-                         'quejas','pagos','proveedores','gastos','caja','waTemplates','expensasCobros','ajustes','servicios','tareas'];
+                         'quejas','pagos','proveedores','gastos','caja','waTemplates','expensasCobros','ajustes','servicios','tareas','mensajes'];
 
         // Estado inicial vacío — se llena desde Firestore en initializeApp()
         let appData = JSON.parse(JSON.stringify(initialData));
@@ -2431,6 +2496,7 @@
                     appData.proveedores = initialData.proveedores || [];
                 if (!appData.waTemplates || appData.waTemplates.length === 0)
                     appData.waTemplates = initialData.waTemplates || [];
+                if (!appData.mensajes)  appData.mensajes = [];
 
                 await restoreLocalPhotos();
                 return true;
@@ -2637,6 +2703,7 @@
             else if (viewName === 'tareas')        renderTareas();
             else if (viewName === 'servicios')     renderServicios();
             else if (viewName === 'asistente')     renderAsistente();
+            else if (viewName === 'inbox')         renderInbox();
         }
 
         function updateBadges() {
@@ -2675,6 +2742,14 @@
                 tareasBadge.textContent = tareasActivas;
                 tareasBadge.style.display = tareasActivas > 0 ? '' : 'none';
                 tareasBadge.classList.toggle('has-count', tareasActivas > 0);
+            }
+
+            const unreadMsgs = (appData.mensajes||[]).filter(m => m.autor === 'inquilino' && !m.leido).length;
+            const inboxBadge = document.getElementById('inboxBadge');
+            if (inboxBadge) {
+                inboxBadge.textContent = unreadMsgs;
+                inboxBadge.style.display = unreadMsgs > 0 ? '' : 'none';
+                inboxBadge.classList.toggle('has-count', unreadMsgs > 0);
             }
         }
 
@@ -3834,6 +3909,8 @@
                 { k: 'docTipo',       l: 'Tipo doc. identidad',      t: 'sel',  opts: ['DNI','Pasaporte','CE','Otro'] },
                 { k: 'ocupacion',     l: 'Ocupación / Empresa',      t: 'text' },
                 { k: 'whatsapp',      l: 'WhatsApp (con código país)', t: 'text', ph: 'Ej: 5491112345678' },
+                { k: 'portalUser',    l: 'Usuario portal inquilino',  t: 'text', ph: 'Ej: DNI o nombre de unidad' },
+                { k: 'portalPass',    l: 'Contraseña portal inquilino', t: 'text', ph: 'Se la comunicás vos por WhatsApp' },
                 { k: 'notas',         l: 'Notas',                    t: 'area',    full: true },
             ],
             contratos: [
@@ -4096,6 +4173,13 @@
             else if (id === 'reportesView')    renderReportes();
             else if (id === 'tareasView')      renderTareas();
             else if (id === 'asistenteView')   renderAsistente();
+            else if (id === 'inboxView')       renderInbox();
+
+            // Si el inquilino tiene el portal abierto, también lo refrescamos
+            const tId = sessionStorage.getItem('mzn4559_tenant_auth');
+            if (tId && document.getElementById('tenantPortal') && document.getElementById('tenantPortal').style.display !== 'none') {
+                renderTenantPortal(Number(tId));
+            }
         }
 
         function showToast(msg, type = 'ok') {
@@ -7235,6 +7319,220 @@
             renderCaja();
         }
 
+        // ============================================================================
+        // BANDEJA (admin) — mensajería con inquilinos
+        // ============================================================================
+        let _inboxSelectedTenant = null;
+
+        function renderInbox() {
+            const container = document.getElementById('inboxContent');
+            if (!container) return;
+
+            const tenants = (appData.inquilinos||[]).map(t => {
+                const msgs = (appData.mensajes||[]).filter(m => Number(m.inquilino) === Number(t.id));
+                const last = msgs.slice().sort((a,b) => new Date(b.fecha) - new Date(a.fecha))[0];
+                const unread = msgs.filter(m => m.autor === 'inquilino' && !m.leido).length;
+                const prop = (appData.propiedades||[]).find(p => p.id === t.propiedad);
+                return { tenant: t, prop, msgs, last, unread };
+            }).filter(x => x.msgs.length > 0 || x.tenant.portalUser)
+              .sort((a,b) => {
+                  if (!a.last && !b.last) return 0;
+                  if (!a.last) return 1;
+                  if (!b.last) return -1;
+                  return new Date(b.last.fecha) - new Date(a.last.fecha);
+              });
+
+            if (_inboxSelectedTenant === null && tenants.length > 0) _inboxSelectedTenant = tenants[0].tenant.id;
+            const selected = tenants.find(x => x.tenant.id === _inboxSelectedTenant);
+
+            const listHtml = tenants.length ? tenants.map(x => `
+                <div onclick="selectInboxTenant(${x.tenant.id})" style="padding:12px 14px;border-radius:12px;cursor:pointer;margin-bottom:6px;
+                    background:${x.tenant.id===_inboxSelectedTenant?'rgba(255,56,92,0.08)':'transparent'};
+                    border:1px solid ${x.tenant.id===_inboxSelectedTenant?'rgba(255,56,92,0.25)':'transparent'};transition:all .15s;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                        <span style="font-size:13px;font-weight:700;">${x.tenant.nombre}</span>
+                        ${x.unread>0 ? `<span class="sidebar-badge has-count" style="position:static;">${x.unread}</span>` : ''}
+                    </div>
+                    <div style="font-size:11px;color:var(--text-tertiary);margin:2px 0 4px;">${x.prop?.nombre || ''}</div>
+                    <div style="font-size:12px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${x.last ? escapeHtml(x.last.texto) : 'Sin mensajes todavía'}</div>
+                </div>`).join('') : `<div class="empty-state"><div class="empty-state-icon">📥</div><div class="empty-state-title">Sin conversaciones</div><div class="empty-state-text">Los mensajes de tus inquilinos van a aparecer acá cuando te escriban desde el portal.</div></div>`;
+
+            let threadHtml = `<div class="empty-state"><div class="empty-state-icon">💬</div><div class="empty-state-title">Elegí una conversación</div></div>`;
+            if (selected) {
+                const msgsSorted = selected.msgs.slice().sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
+                threadHtml = `
+                    <div style="display:flex;flex-direction:column;height:100%;">
+                        <div style="padding:14px 18px;border-bottom:1px solid var(--border-color);">
+                            <div style="font-weight:700;font-size:14px;">${selected.tenant.nombre}</div>
+                            <div style="font-size:11px;color:var(--text-tertiary);">${selected.prop?.nombre || ''}</div>
+                        </div>
+                        <div id="inboxThreadMessages" style="flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px;">
+                            ${msgsSorted.length ? msgsSorted.map(m => `
+                                <div class="ai-message ${m.autor==='admin'?'user':''}">
+                                    <div class="ai-bubble ${m.autor==='admin'?'user':'assistant'}">${escapeHtml(m.texto)}</div>
+                                </div>`).join('') : '<div style="font-size:12px;color:var(--text-tertiary);text-align:center;padding:20px;">Todavía no hay mensajes con este inquilino.</div>'}
+                        </div>
+                        <div style="display:flex;gap:8px;padding:14px 18px;border-top:1px solid var(--border-color);">
+                            <input id="inboxReplyInput" type="text" placeholder="Escribir respuesta..." onkeypress="if(event.key==='Enter') sendAdminReply(${selected.tenant.id})"
+                                style="flex:1;padding:10px 14px;border-radius:12px;border:1px solid var(--border-color);font-size:13px;outline:none;">
+                            <button onclick="sendAdminReply(${selected.tenant.id})" style="background:var(--gradient-purple);color:#fff;border:none;border-radius:12px;padding:0 18px;font-size:13px;font-weight:700;cursor:pointer;">Enviar</button>
+                        </div>
+                    </div>`;
+            }
+
+            container.innerHTML = `
+                <div style="display:grid;grid-template-columns:280px 1fr;gap:20px;height:calc(100vh - 160px);">
+                    <div style="background:#fff;border:1px solid var(--border-color);border-radius:var(--radius-md);padding:14px;overflow-y:auto;box-shadow:var(--shadow-sm);">${listHtml}</div>
+                    <div style="background:#fff;border:1px solid var(--border-color);border-radius:var(--radius-md);overflow:hidden;box-shadow:var(--shadow-sm);">${threadHtml}</div>
+                </div>`;
+
+            const box = document.getElementById('inboxThreadMessages');
+            if (box) box.scrollTop = box.scrollHeight;
+        }
+
+        function selectInboxTenant(tenantId) {
+            _inboxSelectedTenant = tenantId;
+            let changed = false;
+            (appData.mensajes||[]).forEach(m => {
+                if (Number(m.inquilino) === Number(tenantId) && m.autor === 'inquilino' && !m.leido) { m.leido = true; changed = true; }
+            });
+            if (changed) { persistAll(); updateBadges(); }
+            renderInbox();
+        }
+
+        function sendAdminReply(tenantId) {
+            const input = document.getElementById('inboxReplyInput');
+            if (!input) return;
+            const texto = (input.value||'').trim();
+            if (!texto) return;
+            if (!appData.mensajes) appData.mensajes = [];
+            appData.mensajes.push({
+                id: nextId(appData.mensajes),
+                inquilino: Number(tenantId),
+                autor: 'admin',
+                texto: texto,
+                fecha: new Date().toISOString(),
+                leido: true
+            });
+            input.value = '';
+            persistAll();
+            renderInbox();
+        }
+
+        // ============================================================================
+        // PORTAL DE INQUILINOS
+        // ============================================================================
+        function renderTenantPortal(tenantId) {
+            const tenant = (appData.inquilinos||[]).find(i => Number(i.id) === Number(tenantId));
+            const content = document.getElementById('tenantPortalContent');
+            if (!tenant || !content) return;
+            const prop = (appData.propiedades||[]).find(p => p.id === tenant.propiedad);
+            const sub = document.getElementById('tenantPortalSubtitle');
+            if (sub) sub.textContent = (prop?.nombre || 'Tu unidad') + ' · ' + tenant.nombre;
+
+            const moroso = tenant.estado === 'moroso' || _isAutoMoroso(tenant);
+            const expMoroso = prop ? _isAutoMorosoExpensas(prop.id) : false;
+
+            const cobrosExp = (appData.expensasCobros||[])
+                .filter(c => Number(c.propiedad) === Number(tenant.propiedad))
+                .sort((a,b) => (b.mes||'').localeCompare(a.mes||'') || (Number(b.id)||0)-(Number(a.id)||0))
+                .slice(0, 6);
+
+            const contrato = (appData.contratos||[]).find(c => Number(c.inquilino) === Number(tenant.id) && c.estado !== 'vencido');
+
+            const fechasClave = [];
+            if (contrato && contrato.fin && contrato.fin !== '—') fechasClave.push({icon:'📋', label:'Vencimiento de contrato', fecha: contrato.fin});
+            if (contrato && contrato.proximoAjuste) fechasClave.push({icon:'📈', label:'Próximo ajuste de alquiler', fecha: contrato.proximoAjuste});
+            fechasClave.push({icon:'💰', label:'Vencimiento de alquiler', fecha: 'Día 5 de cada mes'});
+            fechasClave.push({icon:'🧾', label:'Vencimiento de expensas', fecha: 'Día 10 de cada mes'});
+
+            const mensajes = (appData.mensajes||[]).filter(m => Number(m.inquilino) === Number(tenant.id))
+                .sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
+
+            const montoTxt = tenant.monto ? (tenant.moneda==='USD'?'USD ':'$') + Number(tenant.monto).toLocaleString('es-AR') : '—';
+
+            content.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:20px;">
+
+                    <div style="background:#fff;border:1px solid var(--border-color);border-radius:var(--radius-md);padding:20px;box-shadow:var(--shadow-sm);">
+                        <div style="font-weight:700;font-size:15px;margin-bottom:14px;">💰 Mi cuenta</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                            <div style="background:var(--bg-tertiary);border-radius:12px;padding:14px;">
+                                <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;font-weight:700;margin-bottom:6px;">Alquiler</div>
+                                <div style="font-size:13px;font-weight:700;color:${moroso?'#e0234f':'#16a34a'};margin-bottom:4px;">${moroso ? '⚠️ Pendiente' : '✅ Al día'}</div>
+                                <div style="font-size:12px;color:var(--text-secondary);">${montoTxt} /mes</div>
+                            </div>
+                            <div style="background:var(--bg-tertiary);border-radius:12px;padding:14px;">
+                                <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;font-weight:700;margin-bottom:6px;">Expensas</div>
+                                <div style="font-size:13px;font-weight:700;color:${expMoroso?'#e0234f':'#16a34a'};margin-bottom:4px;">${expMoroso ? '⚠️ Pendiente' : '✅ Al día'}</div>
+                                <div style="font-size:12px;color:var(--text-secondary);">${prop && prop.expensasRatio ? prop.expensasRatio+'% del edificio' : '—'}</div>
+                            </div>
+                        </div>
+                        ${cobrosExp.length ? `
+                        <div style="margin-top:16px;">
+                            <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;font-weight:700;margin-bottom:8px;">Historial de pagos de expensas</div>
+                            <div style="display:flex;flex-direction:column;gap:6px;">
+                                ${cobrosExp.map(c => `
+                                    <div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:8px 10px;background:var(--bg-tertiary);border-radius:8px;">
+                                        <span>${c.mes||''}</span>
+                                        <span style="color:var(--text-secondary);">${c.fecha||''}</span>
+                                        <span style="font-weight:700;">${c.moneda==='USD'?'USD ':'$'}${Number(c.monto||0).toLocaleString('es-AR')}</span>
+                                    </div>`).join('')}
+                            </div>
+                        </div>` : ''}
+                    </div>
+
+                    <div style="background:#fff;border:1px solid var(--border-color);border-radius:var(--radius-md);padding:20px;box-shadow:var(--shadow-sm);">
+                        <div style="font-weight:700;font-size:15px;margin-bottom:14px;">📅 Fechas clave</div>
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                            ${fechasClave.map(f => `
+                                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-tertiary);border-radius:10px;">
+                                    <span style="font-size:16px;">${f.icon}</span>
+                                    <span style="flex:1;font-size:13px;">${f.label}</span>
+                                    <span style="font-size:12px;font-weight:700;color:var(--text-secondary);">${f.fecha}</span>
+                                </div>`).join('')}
+                        </div>
+                    </div>
+
+                    <div style="background:#fff;border:1px solid var(--border-color);border-radius:var(--radius-md);padding:20px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;">
+                        <div style="font-weight:700;font-size:15px;margin-bottom:14px;">📥 Mensajes con administración</div>
+                        <div id="tenantInboxMessages" style="display:flex;flex-direction:column;gap:10px;max-height:320px;overflow-y:auto;margin-bottom:12px;padding-right:4px;">
+                            ${mensajes.length ? mensajes.map(m => `
+                                <div class="ai-message ${m.autor==='inquilino'?'user':''}">
+                                    <div class="ai-bubble ${m.autor==='inquilino'?'user':'assistant'}">${escapeHtml(m.texto)}</div>
+                                </div>`).join('') : '<div style="font-size:12px;color:var(--text-tertiary);text-align:center;padding:20px;">Todavía no hay mensajes. ¡Escribinos si necesitás algo!</div>'}
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <input id="tenantMsgInput" type="text" placeholder="Escribí tu mensaje..." onkeypress="if(event.key==='Enter') sendTenantMessage(${tenant.id})"
+                                style="flex:1;padding:10px 14px;border-radius:12px;border:1px solid var(--border-color);font-size:13px;outline:none;">
+                            <button onclick="sendTenantMessage(${tenant.id})" style="background:var(--gradient-purple);color:#fff;border:none;border-radius:12px;padding:0 18px;font-size:13px;font-weight:700;cursor:pointer;">Enviar</button>
+                        </div>
+                    </div>
+
+                </div>`;
+            const box = document.getElementById('tenantInboxMessages');
+            if (box) box.scrollTop = box.scrollHeight;
+        }
+
+        function sendTenantMessage(tenantId) {
+            const input = document.getElementById('tenantMsgInput');
+            if (!input) return;
+            const texto = (input.value||'').trim();
+            if (!texto) return;
+            if (!appData.mensajes) appData.mensajes = [];
+            appData.mensajes.push({
+                id: nextId(appData.mensajes),
+                inquilino: Number(tenantId),
+                autor: 'inquilino',
+                texto: texto,
+                fecha: new Date().toISOString(),
+                leido: false
+            });
+            input.value = '';
+            persistAll();
+            renderTenantPortal(tenantId);
+        }
+
         // Start app
         document.addEventListener('DOMContentLoaded', initializeApp);
     </script>
@@ -7288,10 +7586,35 @@
     <script>
         const PWD_HASH = '62c66a7a5dd70c3146618063c344e531e6d4b59e379808443ce962b3abd63c5a';
         const SESSION_KEY = 'mzn4559_auth';
+        const TENANT_SESSION_KEY = 'mzn4559_tenant_auth';
 
         async function sha256(str) {
             const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
             return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+        }
+
+        function setLoginRole(role) {
+            const isAdmin = role === 'admin';
+            document.getElementById('adminLoginForm').style.display = isAdmin ? '' : 'none';
+            document.getElementById('tenantLoginForm').style.display = isAdmin ? 'none' : '';
+            const bA = document.getElementById('roleBtnAdmin'), bT = document.getElementById('roleBtnTenant');
+            bA.style.background = isAdmin ? '#ffffff' : 'transparent';
+            bA.style.color      = isAdmin ? '#222222' : '#717171';
+            bA.style.boxShadow  = isAdmin ? '0 1px 4px rgba(0,0,0,0.10)' : 'none';
+            bT.style.background = isAdmin ? 'transparent' : '#ffffff';
+            bT.style.color      = isAdmin ? '#717171' : '#222222';
+            bT.style.boxShadow  = isAdmin ? 'none' : '0 1px 4px rgba(0,0,0,0.10)';
+            if (!isAdmin) setTimeout(() => document.getElementById('tenantUserInput')?.focus(), 50);
+        }
+
+        function _hideLoginShow(el) {
+            const overlay = document.getElementById('loginOverlay');
+            overlay.style.transition = 'opacity .35s ease';
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                el.style.display = '';
+            }, 350);
         }
 
         async function checkLogin() {
@@ -7300,13 +7623,7 @@
             const hash = await sha256(val);
             if (hash === PWD_HASH) {
                 sessionStorage.setItem(SESSION_KEY, '1');
-                const overlay = document.getElementById('loginOverlay');
-                overlay.style.transition = 'opacity .35s ease';
-                overlay.style.opacity = '0';
-                setTimeout(() => {
-                    overlay.style.display = 'none';
-                    document.getElementById('appContainer').style.display = '';
-                }, 350);
+                _hideLoginShow(document.getElementById('appContainer'));
             } else {
                 document.getElementById('loginError').textContent = 'Contraseña incorrecta';
                 document.getElementById('loginInput').value = '';
@@ -7320,10 +7637,51 @@
             }
         }
 
+        function checkTenantLogin() {
+            const user = (document.getElementById('tenantUserInput').value || '').trim();
+            const pass = (document.getElementById('tenantPassInput').value || '').trim();
+            const errEl = document.getElementById('tenantLoginError');
+            if (!user || !pass) { errEl.textContent = 'Completá usuario y contraseña'; return; }
+            const list = (typeof appData !== 'undefined' && appData.inquilinos) ? appData.inquilinos : [];
+            const tenant = list.find(i =>
+                (i.portalUser || '').trim().toLowerCase() === user.toLowerCase() &&
+                (i.portalPass || '') !== '' && (i.portalPass || '') === pass
+            );
+            if (tenant) {
+                sessionStorage.setItem(TENANT_SESSION_KEY, String(tenant.id));
+                _hideLoginShow(document.getElementById('tenantPortal'));
+                setTimeout(() => { if (typeof renderTenantPortal === 'function') renderTenantPortal(tenant.id); }, 400);
+            } else {
+                errEl.textContent = 'Usuario o contraseña incorrectos';
+                document.getElementById('tenantPassInput').value = '';
+                const card = document.getElementById('loginCard');
+                if (card) {
+                    card.classList.remove('shake-error');
+                    void card.offsetWidth;
+                    card.classList.add('shake-error');
+                }
+            }
+        }
+
+        function tenantLogout() {
+            sessionStorage.removeItem(TENANT_SESSION_KEY);
+            location.reload();
+        }
+
         // Si ya está autenticado en esta sesión, saltear el login
         if (sessionStorage.getItem(SESSION_KEY) === '1') {
             document.getElementById('loginOverlay').style.display = 'none';
             document.getElementById('appContainer').style.display = '';
+        } else if (sessionStorage.getItem(TENANT_SESSION_KEY)) {
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('tenantPortal').style.display = '';
+            const tId = Number(sessionStorage.getItem(TENANT_SESSION_KEY));
+            const _waitTenantData = setInterval(() => {
+                if (typeof appData !== 'undefined' && appData.inquilinos && appData.inquilinos.length > 0) {
+                    clearInterval(_waitTenantData);
+                    if (typeof renderTenantPortal === 'function') renderTenantPortal(tId);
+                }
+            }, 200);
         } else {
             window.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => document.getElementById('loginInput').focus(), 100);
