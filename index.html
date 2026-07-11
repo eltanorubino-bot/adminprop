@@ -1666,6 +1666,10 @@
                         <span>Agenda</span>
                         <span class="sidebar-badge" id="agendaBadge" style="background:#ef4444;">0</span>
                     </div>
+                    <div class="sidebar-item" data-view="avisos" onclick="goToView('avisos')">
+                        <span style="font-size: 16px;">📢</span>
+                        <span>Avisos</span>
+                    </div>
                     <div class="sidebar-item" data-view="caja" onclick="goToView('caja')">
                         <span style="font-size: 16px;">🏦</span>
                         <span>Caja</span>
@@ -1857,6 +1861,12 @@
                 <!-- Agenda View -->
                 <div class="view" id="agendaView">
                     <div id="agendaContent"></div>
+                </div>
+
+                <!-- Avisos View -->
+                <div class="view" id="avisosView">
+                    <button class="btn btn-primary" onclick="openAdd('avisos')" style="margin-bottom: 20px;">+ Nuevo aviso</button>
+                    <div class="list" id="avisosList"></div>
                 </div>
 
                 <!-- Asistente / Chat View -->
@@ -2082,7 +2092,8 @@
             ajustes: [],
             servicios: [],
             tareas: [],
-            mensajes: []
+            mensajes: [],
+            avisos: []
         };
 
         function getDateDaysAgo(days) {
@@ -2242,7 +2253,7 @@
         const FB_COL = 'manzanares4559'; // colección raíz en Firestore
 
         const FB_KEYS = ['propietarios','propiedades','inquilinos','contratos',
-                         'quejas','pagos','proveedores','gastos','caja','waTemplates','expensasCobros','ajustes','servicios','tareas','mensajes'];
+                         'quejas','pagos','proveedores','gastos','caja','waTemplates','expensasCobros','ajustes','servicios','tareas','mensajes','avisos'];
 
         // Estado inicial vacío — se llena desde Firestore en initializeApp()
         let appData = JSON.parse(JSON.stringify(initialData));
@@ -2286,7 +2297,7 @@
         // ── Cargar TODAS las fotos desde Firestore ──
         function _fbLoadAllFotos() {
             return db.collection(FB_FOTOS_COL).get().then(function(snap) {
-                var fotos = { prop: {}, tenant: {}, gallery: {}, plano: {} };
+                var fotos = { prop: {}, tenant: {}, gallery: {}, plano: {}, comprobante: {} };
                 snap.forEach(function(doc) {
                     var d = doc.data();
                     if (d.tipo === 'prop') {
@@ -2299,6 +2310,8 @@
                     } else if (d.tipo === 'plano') {
                         if (!fotos.plano[d.refId]) fotos.plano[d.refId] = [];
                         fotos.plano[d.refId].push({ idx: d.idx || 0, data: d.data });
+                    } else if (d.tipo === 'comprobante') {
+                        fotos.comprobante[d.refId] = d.data;
                     }
                 });
                 // Ordenar arrays de gallery/plano por idx
@@ -2313,12 +2326,12 @@
                 return fotos;
             }).catch(function(e) {
                 console.warn('Error cargando fotos de Firestore:', e);
-                return { prop: {}, tenant: {}, gallery: {}, plano: {} };
+                return { prop: {}, tenant: {}, gallery: {}, plano: {}, comprobante: {} };
             });
         }
 
         // ── Cache en memoria de fotos cargadas ──
-        var _fotosCache = { prop: {}, tenant: {}, gallery: {}, plano: {} };
+        var _fotosCache = { prop: {}, tenant: {}, gallery: {}, plano: {}, comprobante: {} };
 
         // ── Aplicar fotos de propiedades al appData ──
         function _applyPropPhotos() {
@@ -2497,6 +2510,7 @@
                 if (!appData.waTemplates || appData.waTemplates.length === 0)
                     appData.waTemplates = initialData.waTemplates || [];
                 if (!appData.mensajes)  appData.mensajes = [];
+                if (!appData.avisos)    appData.avisos = [];
 
                 await restoreLocalPhotos();
                 return true;
@@ -2682,7 +2696,8 @@
                 'reportes':     '📄 Reportes Mensuales',
                 'tareas':       '🔨 Tareas y Mantenimiento',
                 'servicios':    '🔌 Servicios — Control de Pagos',
-                'asistente':    '🤖 Asistente — Consultas'
+                'asistente':    '🤖 Asistente — Consultas',
+                'avisos':       '📢 Avisos del Edificio'
             };
 
             document.getElementById('pageTitle').textContent = titles[viewName] || 'RentaCRM';
@@ -2704,6 +2719,7 @@
             else if (viewName === 'servicios')     renderServicios();
             else if (viewName === 'asistente')     renderAsistente();
             else if (viewName === 'inbox')         renderInbox();
+            else if (viewName === 'avisos')        renderAvisos();
         }
 
         function updateBadges() {
@@ -3865,7 +3881,8 @@
             gastos:       'Gasto',
             caja:         'Movimiento',
             ajustes:      'Ajuste de alquiler',
-            tareas:       'Tarea de mantenimiento'
+            tareas:       'Tarea de mantenimiento',
+            avisos:       'Aviso'
         };
 
         const SCHEMAS = {
@@ -4007,6 +4024,12 @@
                 { k: 'costoReal',      l: 'Costo real ($)',         t: 'num' },
                 { k: 'fechaVenc',      l: 'Fecha límite',           t: 'date' },
                 { k: 'notas',          l: 'Notas',                  t: 'area', full: true },
+            ],
+            avisos: [
+                { k: 'tipo',        l: 'Tipo',        t: 'sel',  opts: ['Fumigación','Mantenimiento','Corte de luz','Corte de agua','Corte de gas','Aviso general'], req: true },
+                { k: 'titulo',      l: 'Título',      t: 'text', req: true, full: true },
+                { k: 'fecha',       l: 'Fecha',       t: 'date', req: true },
+                { k: 'descripcion', l: 'Descripción', t: 'area', full: true },
             ]
         };
 
@@ -4174,6 +4197,7 @@
             else if (id === 'tareasView')      renderTareas();
             else if (id === 'asistenteView')   renderAsistente();
             else if (id === 'inboxView')       renderInbox();
+            else if (id === 'avisosView')      renderAvisos();
 
             // Si el inquilino tiene el portal abierto, también lo refrescamos
             const tId = sessionStorage.getItem('mzn4559_tenant_auth');
@@ -7320,6 +7344,48 @@
         }
 
         // ============================================================================
+        // AVISOS DEL EDIFICIO (admin) — fumigación, mantenimiento, cortes, generales
+        // ============================================================================
+        function renderAvisos() {
+            const list = document.getElementById('avisosList');
+            if (!list) return;
+            list.innerHTML = '';
+
+            const ICONS = {
+                'Fumigación': '🐜', 'Mantenimiento': '🔧', 'Corte de luz': '⚡',
+                'Corte de agua': '💧', 'Corte de gas': '🔥', 'Aviso general': '📋'
+            };
+
+            const sorted = [...(appData.avisos||[])].sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+
+            if (sorted.length === 0) {
+                list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📢</div><div class="empty-state-title">Sin avisos cargados</div><div class="empty-state-text">Agregá fumigaciones, mantenimientos o avisos generales — los inquilinos los ven en su portal.</div></div>`;
+                return;
+            }
+
+            const today = new Date(); today.setHours(0,0,0,0);
+            sorted.forEach(a => {
+                const d = a.fecha ? new Date(a.fecha + 'T00:00:00') : null;
+                const isFuture = d && d >= today;
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:12px;flex:1;">
+                        <span style="font-size:20px;">${ICONS[a.tipo]||'📢'}</span>
+                        <div>
+                            <div style="font-weight:600;margin-bottom:2px;">${a.titulo || a.tipo}</div>
+                            <div style="font-size:12px;color:var(--text-tertiary);">${a.tipo} · ${d ? d.toLocaleDateString('es-AR') : '—'} ${isFuture ? '· <span style=\"color:var(--accent-teal);font-weight:600;\">Próximo</span>' : ''}</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:2px;">
+                        <button class="btn-icon-edit" onclick="openEdit('avisos',${a.id})" title="Editar">✏️</button>
+                        <button class="btn-icon-del"  onclick="delEntity('avisos',${a.id})" title="Eliminar">🗑️</button>
+                    </div>`;
+                list.appendChild(item);
+            });
+        }
+
+        // ============================================================================
         // BANDEJA (admin) — mensajería con inquilinos
         // ============================================================================
         let _inboxSelectedTenant = null;
@@ -7369,7 +7435,7 @@
                         <div id="inboxThreadMessages" style="flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px;">
                             ${msgsSorted.length ? msgsSorted.map(m => `
                                 <div class="ai-message ${m.autor==='admin'?'user':''}">
-                                    <div class="ai-bubble ${m.autor==='admin'?'user':'assistant'}">${escapeHtml(m.texto)}</div>
+                                    <div class="ai-bubble ${m.autor==='admin'?'user':'assistant'}">${escapeHtml(m.texto)}${_msgAttachHtml(m)}</div>
                                 </div>`).join('') : '<div style="font-size:12px;color:var(--text-tertiary);text-align:center;padding:20px;">Todavía no hay mensajes con este inquilino.</div>'}
                         </div>
                         <div style="display:flex;gap:8px;padding:14px 18px;border-top:1px solid var(--border-color);">
@@ -7422,6 +7488,45 @@
         // ============================================================================
         // PORTAL DE INQUILINOS
         // ============================================================================
+
+        // Adjunto (imagen/pdf) dentro de una burbuja de chat — usado en portal y en Bandeja admin
+        function _msgAttachHtml(m) {
+            if (!m || !m.adjunto) return '';
+            const data = (_fotosCache.comprobante || {})[m.id];
+            if (!data) return '';
+            if (m.adjuntoTipo === 'pdf') {
+                return `<div style="margin-top:6px;"><a href="${data}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:inherit;text-decoration:underline;">📄 Ver comprobante (PDF)</a></div>`;
+            }
+            return `<div style="margin-top:6px;"><a href="${data}" target="_blank" rel="noopener"><img src="${data}" style="max-width:180px;max-height:180px;border-radius:10px;display:block;box-shadow:var(--shadow-sm);"></a></div>`;
+        }
+
+        // Resumen simplificado de expensas por mes: gastos totales del edificio × proporción de la unidad, vs. pagado.
+        // No usa saldoAnterior/fondoUSD (esos viven en localStorage del admin y no están sincronizados) — es una
+        // estimación auto-consistente para que el inquilino tenga visibilidad, no reemplaza la liquidación oficial.
+        function _computeExpensasResumen(prop) {
+            if (!prop || !((prop.expensasRatio||0) > 0)) return [];
+            const ratio = (prop.expensasRatio||0) / 100;
+            const itemMes = g => {
+                if (!g.fecha) return null;
+                const p = g.fecha.split('/');
+                return p.length === 3 ? p[1].padStart(2,'0') + '/' + p[2] : null;
+            };
+            const MESES_CORTO = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            const now = new Date();
+            const out = [];
+            for (let i = 0; i < 6; i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const mm = String(d.getMonth()+1).padStart(2,'0');
+                const yy = d.getFullYear();
+                const key = mm + '/' + yy;
+                const totalGastos = (appData.gastos||[]).filter(g => itemMes(g) === key).reduce((s,g) => s + (g.monto||0), 0);
+                const pagado = (appData.expensasCobros||[]).filter(c => c.mes === key && Number(c.propiedad) === Number(prop.id)).reduce((s,c) => s + (c.monto||0), 0);
+                const miParte = totalGastos * ratio;
+                out.push({ key, label: MESES_CORTO[d.getMonth()] + ' ' + yy, totalGastos, miParte, pagado, saldo: miParte - pagado });
+            }
+            return out;
+        }
+
         function renderTenantPortal(tenantId) {
             const tenant = (appData.inquilinos||[]).find(i => Number(i.id) === Number(tenantId));
             const content = document.getElementById('tenantPortalContent');
@@ -7432,11 +7537,7 @@
 
             const moroso = tenant.estado === 'moroso' || _isAutoMoroso(tenant);
             const expMoroso = prop ? _isAutoMorosoExpensas(prop.id) : false;
-
-            const cobrosExp = (appData.expensasCobros||[])
-                .filter(c => Number(c.propiedad) === Number(tenant.propiedad))
-                .sort((a,b) => (b.mes||'').localeCompare(a.mes||'') || (Number(b.id)||0)-(Number(a.id)||0))
-                .slice(0, 6);
+            const expensasResumen = _computeExpensasResumen(prop);
 
             const contrato = (appData.contratos||[]).find(c => Number(c.inquilino) === Number(tenant.id) && c.estado !== 'vencido');
 
@@ -7445,6 +7546,15 @@
             if (contrato && contrato.proximoAjuste) fechasClave.push({icon:'📈', label:'Próximo ajuste de alquiler', fecha: contrato.proximoAjuste});
             fechasClave.push({icon:'💰', label:'Vencimiento de alquiler', fecha: 'Día 5 de cada mes'});
             fechasClave.push({icon:'🧾', label:'Vencimiento de expensas', fecha: 'Día 10 de cada mes'});
+
+            const AVISO_ICONS = { 'Fumigación': '🐜', 'Mantenimiento': '🔧', 'Corte de luz': '⚡', 'Corte de agua': '💧', 'Corte de gas': '🔥', 'Aviso general': '📋' };
+            const todayA = new Date(); todayA.setHours(0,0,0,0);
+            const avisosOrdenados = [...(appData.avisos||[])].sort((a,b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 5);
+
+            const parseDDMM = f => { if (!f) return null; const p = f.split('/'); return p.length === 3 ? new Date(+p[2], +p[1]-1, +p[0]) : null; };
+            const misPagos = (appData.pagos||[]).filter(p => Number(p.inquilino) === Number(tenant.id))
+                .sort((a,b) => (parseDDMM(b.fecha)||0) - (parseDDMM(a.fecha)||0))
+                .slice(0, 8);
 
             const mensajes = (appData.mensajes||[]).filter(m => Number(m.inquilino) === Number(tenant.id))
                 .sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
@@ -7468,17 +7578,33 @@
                                 <div style="font-size:12px;color:var(--text-secondary);">${prop && prop.expensasRatio ? prop.expensasRatio+'% del edificio' : '—'}</div>
                             </div>
                         </div>
-                        ${cobrosExp.length ? `
+                        ${expensasResumen.length ? `
                         <div style="margin-top:16px;">
-                            <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;font-weight:700;margin-bottom:8px;">Historial de pagos de expensas</div>
+                            <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;font-weight:700;margin-bottom:8px;">Expensas — mes actual (${expensasResumen[0].label})</div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
+                                <div style="background:var(--bg-tertiary);border-radius:10px;padding:10px;text-align:center;">
+                                    <div style="font-size:10px;color:var(--text-tertiary);margin-bottom:4px;">Mi parte</div>
+                                    <div style="font-size:13px;font-weight:700;">$${Math.round(expensasResumen[0].miParte).toLocaleString('es-AR')}</div>
+                                </div>
+                                <div style="background:var(--bg-tertiary);border-radius:10px;padding:10px;text-align:center;">
+                                    <div style="font-size:10px;color:var(--text-tertiary);margin-bottom:4px;">Pagado</div>
+                                    <div style="font-size:13px;font-weight:700;color:#16a34a;">$${Math.round(expensasResumen[0].pagado).toLocaleString('es-AR')}</div>
+                                </div>
+                                <div style="background:var(--bg-tertiary);border-radius:10px;padding:10px;text-align:center;">
+                                    <div style="font-size:10px;color:var(--text-tertiary);margin-bottom:4px;">Saldo</div>
+                                    <div style="font-size:13px;font-weight:700;color:${expensasResumen[0].saldo>0?'#e0234f':'#16a34a'};">$${Math.round(Math.max(0,expensasResumen[0].saldo)).toLocaleString('es-AR')}</div>
+                                </div>
+                            </div>
+                            <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;font-weight:700;margin-bottom:8px;">Historial</div>
                             <div style="display:flex;flex-direction:column;gap:6px;">
-                                ${cobrosExp.map(c => `
+                                ${expensasResumen.slice(1).map(e => `
                                     <div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:8px 10px;background:var(--bg-tertiary);border-radius:8px;">
-                                        <span>${c.mes||''}</span>
-                                        <span style="color:var(--text-secondary);">${c.fecha||''}</span>
-                                        <span style="font-weight:700;">${c.moneda==='USD'?'USD ':'$'}${Number(c.monto||0).toLocaleString('es-AR')}</span>
+                                        <span>${e.label}</span>
+                                        <span style="color:var(--text-secondary);">Pagado $${Math.round(e.pagado).toLocaleString('es-AR')}</span>
+                                        <span style="font-weight:700;color:${e.saldo>0?'#e0234f':'#16a34a'};">${e.saldo>0?'Saldo $'+Math.round(e.saldo).toLocaleString('es-AR'):'Al día'}</span>
                                     </div>`).join('')}
                             </div>
+                            <div style="font-size:10px;color:var(--text-tertiary);margin-top:10px;line-height:1.5;">* Estimado en base a los gastos cargados del edificio y tu proporción (${prop.expensasRatio}%). Puede no incluir ajustes o saldos de meses anteriores.</div>
                         </div>` : ''}
                     </div>
 
@@ -7494,18 +7620,60 @@
                         </div>
                     </div>
 
+                    <div style="background:#fff;border:1px solid var(--border-color);border-radius:var(--radius-md);padding:20px;box-shadow:var(--shadow-sm);">
+                        <div style="font-weight:700;font-size:15px;margin-bottom:14px;">📢 Avisos del edificio</div>
+                        ${avisosOrdenados.length ? `
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                            ${avisosOrdenados.map(a => {
+                                const d = a.fecha ? new Date(a.fecha + 'T00:00:00') : null;
+                                const isFuture = d && d >= todayA;
+                                return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-tertiary);border-radius:10px;">
+                                    <span style="font-size:16px;">${AVISO_ICONS[a.tipo]||'📢'}</span>
+                                    <div style="flex:1;">
+                                        <div style="font-size:13px;font-weight:600;">${escapeHtml(a.titulo||a.tipo)}</div>
+                                        ${a.descripcion ? `<div style="font-size:11px;color:var(--text-tertiary);margin-top:2px;">${escapeHtml(a.descripcion)}</div>` : ''}
+                                    </div>
+                                    <span style="font-size:11px;font-weight:700;color:${isFuture?'var(--accent-teal)':'var(--text-tertiary)'};white-space:nowrap;">${d?d.toLocaleDateString('es-AR'):''}</span>
+                                </div>`;
+                            }).join('')}
+                        </div>` : '<div style="font-size:12px;color:var(--text-tertiary);text-align:center;padding:16px;">Sin avisos por el momento.</div>'}
+                    </div>
+
+                    <div style="background:#fff;border:1px solid var(--border-color);border-radius:var(--radius-md);padding:20px;box-shadow:var(--shadow-sm);">
+                        <div style="font-weight:700;font-size:15px;margin-bottom:14px;">🧾 Mis pagos y contrato</div>
+                        ${contrato && contrato.archivo ? `
+                        <a href="${contrato.archivo}" download="${contrato.archivoNombre||'contrato.pdf'}" style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:10px;margin-bottom:14px;text-decoration:none;color:var(--text-primary);">
+                            <span style="font-size:18px;">📄</span>
+                            <span style="flex:1;font-size:13px;font-weight:600;">Mi contrato de alquiler</span>
+                            <span style="font-size:12px;font-weight:700;color:var(--accent-purple);">Descargar</span>
+                        </a>` : ''}
+                        ${misPagos.length ? `
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            ${misPagos.map(p => `
+                                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;background:var(--bg-tertiary);border-radius:10px;">
+                                    <div>
+                                        <div style="font-size:12px;font-weight:600;">${escapeHtml(p.concepto || 'Pago')}</div>
+                                        <div style="font-size:11px;color:var(--text-tertiary);">${p.fecha||''} · ${p.moneda==='USD'?'USD ':'$'}${Number(p.monto||0).toLocaleString('es-AR')}</div>
+                                    </div>
+                                    <button onclick="generateRecibo(${p.id})" style="background:#fff;border:1px solid var(--border-color);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;color:var(--accent-purple);">Ver recibo</button>
+                                </div>`).join('')}
+                        </div>` : '<div style="font-size:12px;color:var(--text-tertiary);text-align:center;padding:16px;">Todavía no hay pagos registrados.</div>'}
+                    </div>
+
                     <div style="background:#fff;border:1px solid var(--border-color);border-radius:var(--radius-md);padding:20px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;">
                         <div style="font-weight:700;font-size:15px;margin-bottom:14px;">📥 Mensajes con administración</div>
                         <div id="tenantInboxMessages" style="display:flex;flex-direction:column;gap:10px;max-height:320px;overflow-y:auto;margin-bottom:12px;padding-right:4px;">
                             ${mensajes.length ? mensajes.map(m => `
                                 <div class="ai-message ${m.autor==='inquilino'?'user':''}">
-                                    <div class="ai-bubble ${m.autor==='inquilino'?'user':'assistant'}">${escapeHtml(m.texto)}</div>
+                                    <div class="ai-bubble ${m.autor==='inquilino'?'user':'assistant'}">${escapeHtml(m.texto)}${_msgAttachHtml(m)}</div>
                                 </div>`).join('') : '<div style="font-size:12px;color:var(--text-tertiary);text-align:center;padding:20px;">Todavía no hay mensajes. ¡Escribinos si necesitás algo!</div>'}
                         </div>
-                        <div style="display:flex;gap:8px;">
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <input type="file" id="tenantAttachInput" accept="image/*,application/pdf" style="display:none" onchange="handleTenantAttach(event, ${tenant.id})">
+                            <button onclick="document.getElementById('tenantAttachInput').click()" title="Adjuntar comprobante de pago" style="background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:12px;width:40px;height:40px;font-size:16px;cursor:pointer;flex-shrink:0;">📎</button>
                             <input id="tenantMsgInput" type="text" placeholder="Escribí tu mensaje..." onkeypress="if(event.key==='Enter') sendTenantMessage(${tenant.id})"
                                 style="flex:1;padding:10px 14px;border-radius:12px;border:1px solid var(--border-color);font-size:13px;outline:none;">
-                            <button onclick="sendTenantMessage(${tenant.id})" style="background:var(--gradient-purple);color:#fff;border:none;border-radius:12px;padding:0 18px;font-size:13px;font-weight:700;cursor:pointer;">Enviar</button>
+                            <button onclick="sendTenantMessage(${tenant.id})" style="background:var(--gradient-purple);color:#fff;border:none;border-radius:12px;padding:0 18px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;">Enviar</button>
                         </div>
                     </div>
 
@@ -7530,6 +7698,62 @@
             });
             input.value = '';
             persistAll();
+            renderTenantPortal(tenantId);
+        }
+
+        // Adjuntar comprobante de pago (imagen o PDF) al chat del portal de inquilinos
+        function handleTenantAttach(event, tenantId) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const MAX_MB = 8;
+            if (file.size > MAX_MB * 1024 * 1024) {
+                showToast('El archivo supera los ' + MAX_MB + ' MB', 'err');
+                event.target.value = '';
+                return;
+            }
+            const isImage = file.type.startsWith('image/');
+            const reader = new FileReader();
+            reader.onload = e => {
+                if (isImage) {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX = 900;
+                        let w = img.width, h = img.height;
+                        if (w > h) { if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; } }
+                        else       { if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; } }
+                        canvas.width = w; canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        const compressed = canvas.toDataURL('image/jpeg', 0.72);
+                        _finishTenantAttach(tenantId, compressed, 'image');
+                    };
+                    img.src = e.target.result;
+                } else {
+                    _finishTenantAttach(tenantId, e.target.result, 'pdf');
+                }
+            };
+            reader.readAsDataURL(file);
+            event.target.value = '';
+        }
+
+        function _finishTenantAttach(tenantId, dataUrl, kind) {
+            if (!appData.mensajes) appData.mensajes = [];
+            const msgId = nextId(appData.mensajes);
+            appData.mensajes.push({
+                id: msgId,
+                inquilino: Number(tenantId),
+                autor: 'inquilino',
+                texto: kind === 'pdf' ? '📎 Comprobante adjunto (PDF)' : '📎 Comprobante de pago adjunto',
+                fecha: new Date().toISOString(),
+                leido: false,
+                adjunto: true,
+                adjuntoTipo: kind
+            });
+            if (!_fotosCache.comprobante) _fotosCache.comprobante = {};
+            _fotosCache.comprobante[msgId] = dataUrl;
+            _fbSaveFoto('comprobante', msgId, dataUrl);
+            persistAll();
+            showToast('Comprobante enviado ✓');
             renderTenantPortal(tenantId);
         }
 
