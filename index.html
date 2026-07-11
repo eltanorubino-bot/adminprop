@@ -13,6 +13,8 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- SheetJS — Excel export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- QRCode — para el botón "Pagar ahora" del portal de inquilinos -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <!-- Firebase SDK (compat) -->
     <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
@@ -1670,6 +1672,14 @@
                         <span style="font-size: 16px;">📢</span>
                         <span>Avisos</span>
                     </div>
+                    <div class="sidebar-item" data-view="documentos" onclick="goToView('documentos')">
+                        <span style="font-size: 16px;">📁</span>
+                        <span>Documentos</span>
+                    </div>
+                    <div class="sidebar-item" data-view="faqs" onclick="goToView('faqs')">
+                        <span style="font-size: 16px;">❓</span>
+                        <span>FAQ</span>
+                    </div>
                     <div class="sidebar-item" data-view="caja" onclick="goToView('caja')">
                         <span style="font-size: 16px;">🏦</span>
                         <span>Caja</span>
@@ -1867,6 +1877,18 @@
                 <div class="view" id="avisosView">
                     <button class="btn btn-primary" onclick="openAdd('avisos')" style="margin-bottom: 20px;">+ Nuevo aviso</button>
                     <div class="list" id="avisosList"></div>
+                </div>
+
+                <!-- Documentos View -->
+                <div class="view" id="documentosView">
+                    <button class="btn btn-primary" onclick="openAdd('documentos')" style="margin-bottom: 20px;">+ Nuevo documento</button>
+                    <div class="list" id="documentosList"></div>
+                </div>
+
+                <!-- FAQ View -->
+                <div class="view" id="faqsView">
+                    <button class="btn btn-primary" onclick="openAdd('faqs')" style="margin-bottom: 20px;">+ Nueva pregunta</button>
+                    <div class="list" id="faqsList"></div>
                 </div>
 
                 <!-- Asistente / Chat View -->
@@ -2094,7 +2116,16 @@
             tareas: [],
             mensajes: [],
             avisos: [],
-            expensasConfig: []
+            expensasConfig: [],
+            documentos: [],
+            faqs: [
+                { id: 1, orden: 1, pregunta: '¿Cómo pago el alquiler o las expensas?', respuesta: 'Podés transferir a la cuenta del fideicomiso (alias y CBU los encontrás en el botón "💳 Pagar ahora" de tu portal, en la tarjeta "Mi cuenta"). Después de pagar, te recomendamos adjuntar el comprobante en el chat de "Mensajes con administración".' },
+                { id: 2, orden: 2, pregunta: '¿Qué hago si hay un corte de luz?', respuesta: 'Revisá primero la llave térmica de tu unidad. Si el corte afecta a todo el edificio, escribinos por el chat del portal o esperá el aviso — ya estamos al tanto y coordinando con el proveedor.' },
+                { id: 3, orden: 3, pregunta: '¿Qué hago si hay un corte de agua?', respuesta: 'Puede deberse a mantenimiento programado (revisá la sección "Avisos del edificio") o a un problema puntual. Si no encontrás un aviso relacionado, escribinos por el chat para reportarlo.' },
+                { id: 4, orden: 4, pregunta: '¿Qué hago si hay un corte de gas?', respuesta: 'Si sentís olor a gas, ventilá y salí del lugar, no acciones llaves de luz, y llamá inmediatamente al 0800-666-0107 (emergencias de gas). Para cortes programados de mantenimiento, revisá "Avisos del edificio".' },
+                { id: 5, orden: 5, pregunta: '¿Cómo contacto al administrador?', respuesta: 'Desde tu portal, usá la tarjeta "Mensajes con administración" para escribir directamente. También podés adjuntar fotos o comprobantes de pago desde ahí.' },
+                { id: 6, orden: 6, pregunta: '¿Dónde veo mi contrato o mis recibos de pago?', respuesta: 'En la tarjeta "Mis pagos y contrato" de tu portal podés descargar tu contrato (si está cargado) y ver el recibo de cada pago registrado.' },
+            ]
         };
 
         function getDateDaysAgo(days) {
@@ -2254,7 +2285,7 @@
         const FB_COL = 'manzanares4559'; // colección raíz en Firestore
 
         const FB_KEYS = ['propietarios','propiedades','inquilinos','contratos',
-                         'quejas','pagos','proveedores','gastos','caja','waTemplates','expensasCobros','ajustes','servicios','tareas','mensajes','avisos','expensasConfig'];
+                         'quejas','pagos','proveedores','gastos','caja','waTemplates','expensasCobros','ajustes','servicios','tareas','mensajes','avisos','expensasConfig','documentos','faqs'];
 
         // Estado inicial vacío — se llena desde Firestore en initializeApp()
         let appData = JSON.parse(JSON.stringify(initialData));
@@ -2513,6 +2544,8 @@
                 if (!appData.mensajes)  appData.mensajes = [];
                 if (!appData.avisos)    appData.avisos = [];
                 if (!appData.expensasConfig) appData.expensasConfig = [];
+                if (!appData.documentos) appData.documentos = [];
+                if (!appData.faqs || appData.faqs.length === 0) appData.faqs = initialData.faqs || [];
 
                 // Migración única: el saldo anterior / fondo USD por mes vivía sólo en localStorage
                 // de este dispositivo (no sincronizaba). Lo subimos a Firestore para que también
@@ -2720,7 +2753,9 @@
                 'tareas':       '🔨 Tareas y Mantenimiento',
                 'servicios':    '🔌 Servicios — Control de Pagos',
                 'asistente':    '🤖 Asistente — Consultas',
-                'avisos':       '📢 Avisos del Edificio'
+                'avisos':       '📢 Avisos del Edificio',
+                'documentos':   '📁 Documentos del Edificio',
+                'faqs':         '❓ Preguntas Frecuentes'
             };
 
             document.getElementById('pageTitle').textContent = titles[viewName] || 'RentaCRM';
@@ -2743,6 +2778,8 @@
             else if (viewName === 'asistente')     renderAsistente();
             else if (viewName === 'inbox')         renderInbox();
             else if (viewName === 'avisos')        renderAvisos();
+            else if (viewName === 'documentos')    renderDocumentos();
+            else if (viewName === 'faqs')          renderFaqs();
         }
 
         function updateBadges() {
@@ -3905,7 +3942,9 @@
             caja:         'Movimiento',
             ajustes:      'Ajuste de alquiler',
             tareas:       'Tarea de mantenimiento',
-            avisos:       'Aviso'
+            avisos:       'Aviso',
+            documentos:   'Documento',
+            faqs:         'Pregunta frecuente'
         };
 
         const SCHEMAS = {
@@ -4005,6 +4044,7 @@
                 { k: 'calificacion', l: 'Calificación (1-5)', t: 'sel', opts: ['5 ⭐⭐⭐⭐⭐','4 ⭐⭐⭐⭐','3 ⭐⭐⭐','2 ⭐⭐','1 ⭐'] },
                 { k: 'cuit',      l: 'CUIT',               t: 'text' },
                 { k: 'zona',      l: 'Zona / Barrio',      t: 'text' },
+                { k: 'visibleInquilinos', l: 'Visible para inquilinos (directorio de contactos)', t: 'chk' },
                 { k: 'notas',     l: 'Notas',              t: 'area', full: true },
             ],
             gastos: [
@@ -4053,6 +4093,16 @@
                 { k: 'titulo',      l: 'Título',      t: 'text', req: true, full: true },
                 { k: 'fecha',       l: 'Fecha',       t: 'date', req: true },
                 { k: 'descripcion', l: 'Descripción', t: 'area', full: true },
+            ],
+            documentos: [
+                { k: 'categoria',  l: 'Categoría', t: 'sel',  opts: ['Reglamento de convivencia','Reglamento de copropiedad','Acta de asamblea','Otro'], req: true },
+                { k: 'titulo',     l: 'Título',    t: 'text', req: true, full: true, ph: 'Ej: Reglamento de convivencia 2026' },
+                { k: 'notas',      l: 'Notas',     t: 'area', full: true },
+            ],
+            faqs: [
+                { k: 'pregunta',   l: 'Pregunta',  t: 'text', req: true, full: true },
+                { k: 'respuesta',  l: 'Respuesta', t: 'area', req: true, full: true },
+                { k: 'orden',      l: 'Orden (menor = aparece primero)', t: 'num' },
             ]
         };
 
@@ -4221,6 +4271,8 @@
             else if (id === 'asistenteView')   renderAsistente();
             else if (id === 'inboxView')       renderInbox();
             else if (id === 'avisosView')      renderAvisos();
+            else if (id === 'documentosView')  renderDocumentos();
+            else if (id === 'faqsView')        renderFaqs();
 
             // Si el inquilino tiene el portal abierto, también lo refrescamos
             const tId = sessionStorage.getItem('mzn4559_tenant_auth');
@@ -7481,6 +7533,97 @@
         }
 
         // ============================================================================
+        // DOCUMENTOS DEL EDIFICIO (reglamentos, actas) — admin
+        // ============================================================================
+        function renderDocumentos() {
+            const list = document.getElementById('documentosList');
+            if (!list) return;
+            list.innerHTML = '';
+
+            const ICONS = {
+                'Reglamento de convivencia': '📜', 'Reglamento de copropiedad': '📘',
+                'Acta de asamblea': '🗒️', 'Otro': '📄'
+            };
+
+            const sorted = [...(appData.documentos||[])].sort((a,b) => (a.categoria||'').localeCompare(b.categoria||''));
+
+            if (sorted.length === 0) {
+                list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📁</div><div class="empty-state-title">Sin documentos cargados</div><div class="empty-state-text">Subí el reglamento de convivencia, de copropiedad o actas de asamblea — los inquilinos los van a poder descargar desde su portal.</div></div>`;
+                return;
+            }
+
+            sorted.forEach(d => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                const inputId = 'docFile_' + d.id;
+                item.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:12px;flex:1;">
+                        <span style="font-size:20px;">${ICONS[d.categoria]||'📄'}</span>
+                        <div>
+                            <div style="font-weight:600;margin-bottom:2px;">${escapeHtml(d.titulo||d.categoria)}</div>
+                            <div style="font-size:12px;color:var(--text-tertiary);">${d.categoria}${d.archivo ? ' · <span style="color:#16a34a;font-weight:600;">Archivo cargado ✓</span>' : ' · <span style="color:#e0234f;font-weight:600;">Sin archivo</span>'}</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:2px;align-items:center;">
+                        <input type="file" id="${inputId}" accept="application/pdf,image/*" style="display:none" onchange="uploadDocumentoFile(event,${d.id})">
+                        <button class="btn-icon-edit" onclick="document.getElementById('${inputId}').click()" title="${d.archivo?'Reemplazar archivo':'Adjuntar archivo'}">📎</button>
+                        <button class="btn-icon-edit" onclick="openEdit('documentos',${d.id})" title="Editar">✏️</button>
+                        <button class="btn-icon-del"  onclick="delEntity('documentos',${d.id})" title="Eliminar">🗑️</button>
+                    </div>`;
+                list.appendChild(item);
+            });
+        }
+
+        function uploadDocumentoFile(event, docId) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const MAX_MB = 8;
+            if (file.size > MAX_MB * 1024 * 1024) { showToast('El archivo supera los ' + MAX_MB + ' MB', 'err'); return; }
+            const reader = new FileReader();
+            reader.onload = e => {
+                const doc = (appData.documentos||[]).find(d => d.id === docId);
+                if (!doc) return;
+                doc.archivo = e.target.result;
+                doc.archivoNombre = file.name;
+                persistAll();
+                showToast('Documento adjuntado ✓');
+                rerender();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ============================================================================
+        // FAQ (preguntas frecuentes) — admin
+        // ============================================================================
+        function renderFaqs() {
+            const list = document.getElementById('faqsList');
+            if (!list) return;
+            list.innerHTML = '';
+
+            const sorted = [...(appData.faqs||[])].sort((a,b) => (a.orden||999) - (b.orden||999));
+
+            if (sorted.length === 0) {
+                list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">❓</div><div class="empty-state-title">Sin preguntas cargadas</div><div class="empty-state-text">Agregá preguntas frecuentes — los inquilinos las ven en su portal.</div></div>`;
+                return;
+            }
+
+            sorted.forEach(f => {
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.innerHTML = `
+                    <div style="flex:1;">
+                        <div style="font-weight:600;margin-bottom:2px;">${escapeHtml(f.pregunta)}</div>
+                        <div style="font-size:12px;color:var(--text-tertiary);">${escapeHtml(f.respuesta)}</div>
+                    </div>
+                    <div style="display:flex;gap:2px;">
+                        <button class="btn-icon-edit" onclick="openEdit('faqs',${f.id})" title="Editar">✏️</button>
+                        <button class="btn-icon-del"  onclick="delEntity('faqs',${f.id})" title="Eliminar">🗑️</button>
+                    </div>`;
+                list.appendChild(item);
+            });
+        }
+
+        // ============================================================================
         // BANDEJA (admin) — mensajería con inquilinos
         // ============================================================================
         let _inboxSelectedTenant = null;
@@ -7736,8 +7879,34 @@
 
             const montoTxt = tenant.monto ? (tenant.moneda==='USD'?'USD ':'$') + Number(tenant.monto).toLocaleString('es-AR') : '—';
 
+            // Recordatorio dinámico de vencimiento próximo — se recalcula cada vez que se abre
+            // el portal, no depende de ningún backend ni de que el admin haga nada.
+            const hoyRec = new Date();
+            const diaHoyRec = hoyRec.getDate();
+            const recordatorios = [];
+            if (moroso) {
+                const dias = 5 - diaHoyRec;
+                if (dias >= 0 && dias <= 3) recordatorios.push(`🔔 Tu alquiler vence ${dias===0?'hoy':'en '+dias+' día'+(dias===1?'':'s')} (día 5) y todavía no registramos el pago.`);
+                else if (dias < 0) recordatorios.push(`⚠️ Tu alquiler venció el día 5 y todavía no registramos el pago.`);
+            }
+            if (expMoroso) {
+                const dias = 10 - diaHoyRec;
+                if (dias >= 0 && dias <= 3) recordatorios.push(`🔔 Tus expensas vencen ${dias===0?'hoy':'en '+dias+' día'+(dias===1?'':'s')} (día 10) y todavía no registramos el pago.`);
+                else if (dias < 0) recordatorios.push(`⚠️ Tus expensas vencieron el día 10 y todavía no registramos el pago.`);
+            }
+
+            const DOC_ICONS = { 'Reglamento de convivencia': '📜', 'Reglamento de copropiedad': '📘', 'Acta de asamblea': '🗒️', 'Otro': '📄' };
+            const documentosDisponibles = (appData.documentos||[]).filter(d => d.archivo);
+            const contactosUtiles = (appData.proveedores||[]).filter(p => p.visibleInquilinos);
+            const faqsOrdenados = [...(appData.faqs||[])].sort((a,b) => (a.orden||999) - (b.orden||999));
+
             content.innerHTML = `
                 <div style="display:flex;flex-direction:column;gap:20px;">
+
+                    ${recordatorios.length ? `
+                    <div style="background:linear-gradient(135deg,#fff3f3,#ffe8ea);border:1px solid rgba(224,35,79,0.25);border-radius:var(--radius-md);padding:16px 20px;display:flex;flex-direction:column;gap:6px;">
+                        ${recordatorios.map(r => `<div style="font-size:13px;font-weight:600;color:#b3123a;">${r}</div>`).join('')}
+                    </div>` : ''}
 
                     <div style="background:#fff;border:1px solid var(--border-color);border-radius:var(--radius-md);padding:20px;box-shadow:var(--shadow-sm);">
                         <div style="font-weight:700;font-size:15px;margin-bottom:14px;">💰 Mi cuenta</div>
@@ -7753,6 +7922,9 @@
                                 <div style="font-size:12px;color:var(--text-secondary);">${prop && prop.expensasRatio ? prop.expensasRatio+'% del edificio' : '—'}</div>
                             </div>
                         </div>
+                        <button onclick="abrirPagarAhora(${tenant.id})" style="width:100%;margin-top:14px;padding:12px;border-radius:12px;border:none;background:var(--gradient-purple);color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+                            💳 Pagar ahora
+                        </button>
                         ${expensasResumen.length ? `
                         <div style="margin-top:16px;">
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -7862,9 +8034,167 @@
                         </div>
                     </div>
 
+                    <div style="background:#fff;border:1px solid var(--border-color);border-radius:var(--radius-md);padding:20px;box-shadow:var(--shadow-sm);">
+                        <div style="font-weight:700;font-size:15px;margin-bottom:14px;">📁 Documentos del edificio</div>
+                        ${documentosDisponibles.length ? `
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                            ${documentosDisponibles.map(d => `
+                                <a href="${d.archivo}" download="${d.archivoNombre||d.titulo}" style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:10px;text-decoration:none;color:var(--text-primary);">
+                                    <span style="font-size:18px;">${DOC_ICONS[d.categoria]||'📄'}</span>
+                                    <div style="flex:1;">
+                                        <div style="font-size:13px;font-weight:600;">${escapeHtml(d.titulo)}</div>
+                                        <div style="font-size:11px;color:var(--text-tertiary);">${d.categoria}</div>
+                                    </div>
+                                    <span style="font-size:12px;font-weight:700;color:var(--accent-purple);">Descargar</span>
+                                </a>`).join('')}
+                        </div>` : '<div style="font-size:12px;color:var(--text-tertiary);text-align:center;padding:16px;">Todavía no hay documentos disponibles.</div>'}
+                    </div>
+
+                    <div style="background:#fff;border:1px solid var(--border-color);border-radius:var(--radius-md);padding:20px;box-shadow:var(--shadow-sm);">
+                        <div style="font-weight:700;font-size:15px;margin-bottom:14px;">📋 Contactos útiles</div>
+                        ${contactosUtiles.length ? `
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                            ${contactosUtiles.map(p => `
+                                <div style="padding:12px;background:var(--bg-tertiary);border-radius:10px;">
+                                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                                        <div style="font-size:13px;font-weight:600;">${escapeHtml(p.nombre)}</div>
+                                        <div style="font-size:11px;color:var(--text-tertiary);white-space:nowrap;">${p.rubro||''}</div>
+                                    </div>
+                                    <div style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap;">
+                                        ${p.tel ? `<a href="tel:${p.tel}" style="font-size:12px;color:var(--accent-purple);text-decoration:none;font-weight:600;">📞 ${p.tel}</a>` : ''}
+                                        ${p.email ? `<a href="mailto:${p.email}" style="font-size:12px;color:var(--accent-purple);text-decoration:none;font-weight:600;">✉️ ${p.email}</a>` : ''}
+                                    </div>
+                                </div>`).join('')}
+                        </div>` : '<div style="font-size:12px;color:var(--text-tertiary);text-align:center;padding:16px;">Todavía no hay contactos publicados.</div>'}
+                    </div>
+
+                    <div style="background:#fff;border:1px solid var(--border-color);border-radius:var(--radius-md);padding:20px;box-shadow:var(--shadow-sm);">
+                        <div style="font-weight:700;font-size:15px;margin-bottom:14px;">❓ Preguntas frecuentes</div>
+                        ${faqsOrdenados.length ? `
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                            ${faqsOrdenados.map(f => `
+                                <details style="background:var(--bg-tertiary);border-radius:10px;padding:10px 14px;">
+                                    <summary style="font-size:13px;font-weight:600;cursor:pointer;">${escapeHtml(f.pregunta)}</summary>
+                                    <div style="font-size:12px;color:var(--text-secondary);margin-top:8px;line-height:1.6;">${escapeHtml(f.respuesta)}</div>
+                                </details>`).join('')}
+                        </div>` : '<div style="font-size:12px;color:var(--text-tertiary);text-align:center;padding:16px;">Todavía no hay preguntas cargadas.</div>'}
+                    </div>
+
                 </div>`;
             const box = document.getElementById('tenantInboxMessages');
             if (box) box.scrollTop = box.scrollHeight;
+        }
+
+        // ── Botón "Pagar ahora" — modal con QR + alias/CBU copiables ───────────────
+        // El QR codifica los datos de la cuenta como texto plano: lo que garantiza es
+        // que se pueda copiar rápido con la cámara del celular, no un auto-completado
+        // interbancario (eso requeriría integrarse como PSP/QR interoperable BCRA).
+        function abrirPagarAhora(tenantId) {
+            const tenant = (appData.inquilinos||[]).find(i => Number(i.id) === Number(tenantId));
+            if (!tenant) return;
+            const prop = (appData.propiedades||[]).find(p => p.id === tenant.propiedad);
+
+            const montoAlquiler = tenant.monto ? Number(tenant.monto) : 0;
+            const monedaAlquiler = tenant.moneda === 'USD' ? 'USD' : '$';
+            const expensasResumen = _computeExpensasResumen(prop);
+            const montoExpensas = (expensasResumen.length && expensasResumen[0].disponible) ? Math.round(expensasResumen[0].saldoPagar) : 0;
+
+            const opciones = [{ label: 'Alquiler', monto: montoAlquiler, moneda: monedaAlquiler, concepto: `Alquiler ${tenant.nombre}` }];
+            if (montoExpensas > 0) opciones.push({ label: 'Expensas', monto: montoExpensas, moneda: '$', concepto: `Expensas ${expensasResumen[0].label} - ${tenant.nombre}` });
+
+            let overlay = document.getElementById('pagarAhoraOverlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'pagarAhoraOverlay';
+                overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+                document.body.appendChild(overlay);
+            }
+            const inicial = opciones[0];
+            overlay.innerHTML = `
+                <div style="background:#fff;border-radius:20px;max-width:420px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+                    <button onclick="cerrarPagarAhora()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-tertiary);">✕</button>
+                    <div style="font-weight:800;font-size:18px;margin-bottom:4px;">💳 Pagar ahora</div>
+                    <div style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px;">Transferí directo a la cuenta del fideicomiso.</div>
+
+                    ${opciones.length > 1 ? `
+                    <div style="display:flex;gap:8px;margin-bottom:16px;">
+                        ${opciones.map((o,i) => `<button onclick="_seleccionarConceptoPago(${i})" data-idx="${i}" class="pago-chip" style="flex:1;padding:8px;border-radius:10px;border:1px solid ${i===0?'var(--accent-purple)':'var(--border-color)'};background:${i===0?'rgba(255,56,92,.08)':'#fff'};color:${i===0?'var(--accent-purple)':'var(--text-secondary)'};font-size:12px;font-weight:700;cursor:pointer;">${o.label}<br><span style="font-size:13px;">${o.moneda==='USD'?'USD ':'$'}${o.monto.toLocaleString('es-AR')}</span></button>`).join('')}
+                    </div>` : ''}
+
+                    <div style="background:var(--bg-tertiary);border-radius:14px;padding:16px;text-align:center;margin-bottom:16px;">
+                        <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;font-weight:700;margin-bottom:4px;">Monto a transferir</div>
+                        <div style="font-size:28px;font-weight:800;color:var(--accent-purple);" id="pagoMontoDisplay">${inicial.moneda==='USD'?'USD ':'$'}${inicial.monto.toLocaleString('es-AR')}</div>
+                        <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;" id="pagoConceptoDisplay">${inicial.concepto}</div>
+                    </div>
+
+                    <div id="pagoQRBox" style="display:flex;justify-content:center;margin-bottom:8px;"></div>
+                    <div style="font-size:11px;color:var(--text-tertiary);text-align:center;margin-bottom:16px;">Escaneá con la cámara de tu celular para copiar los datos de la cuenta</div>
+
+                    <div style="border:1px solid var(--border-color);border-radius:14px;padding:16px;font-size:13px;line-height:2;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span style="color:var(--text-tertiary);">Alias</span>
+                            <span style="display:flex;align-items:center;gap:8px;"><strong>manzanares4559</strong>
+                                <button onclick="_copiarTexto('manzanares4559', this)" style="background:none;border:1px solid var(--border-color);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--accent-purple);">Copiar</button>
+                            </span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span style="color:var(--text-tertiary);">CBU</span>
+                            <span style="display:flex;align-items:center;gap:8px;"><strong style="font-family:monospace;font-size:12px;">0070245630004018218454</strong>
+                                <button onclick="_copiarTexto('0070245630004018218454', this)" style="background:none;border:1px solid var(--border-color);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--accent-purple);">Copiar</button>
+                            </span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;">
+                            <span style="color:var(--text-tertiary);">Banco</span><span>Caja Ahorro Pesos</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;">
+                            <span style="color:var(--text-tertiary);">Titular / DNI</span><span>29.392.330</span>
+                        </div>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-tertiary);text-align:center;margin-top:14px;line-height:1.5;">Después de transferir, no te olvides de adjuntar el comprobante en "Mensajes con administración" 📎</div>
+                </div>`;
+
+            window._pagoOpciones = opciones;
+            setTimeout(() => _renderPagoQR(0), 0);
+        }
+
+        function _seleccionarConceptoPago(idx) {
+            const o = window._pagoOpciones[idx];
+            const montoEl = document.getElementById('pagoMontoDisplay');
+            const conceptoEl = document.getElementById('pagoConceptoDisplay');
+            if (montoEl) montoEl.textContent = (o.moneda==='USD'?'USD ':'$') + o.monto.toLocaleString('es-AR');
+            if (conceptoEl) conceptoEl.textContent = o.concepto;
+            document.querySelectorAll('.pago-chip').forEach((el,i) => {
+                const active = i === idx;
+                el.style.border = active ? '1px solid var(--accent-purple)' : '1px solid var(--border-color)';
+                el.style.background = active ? 'rgba(255,56,92,.08)' : '#fff';
+                el.style.color = active ? 'var(--accent-purple)' : 'var(--text-secondary)';
+            });
+            _renderPagoQR(idx);
+        }
+
+        function _renderPagoQR(idx) {
+            const box = document.getElementById('pagoQRBox');
+            if (!box || typeof QRCode === 'undefined' || !window._pagoOpciones) return;
+            box.innerHTML = '';
+            const o = window._pagoOpciones[idx];
+            const texto = `Alias: manzanares4559\nCBU: 0070245630004018218454\nBanco: Caja Ahorro Pesos\nMonto: ${o.moneda==='USD'?'USD ':'$'}${o.monto.toLocaleString('es-AR')}\nConcepto: ${o.concepto}`;
+            new QRCode(box, { text: texto, width: 168, height: 168, colorDark: '#1a1a2e', colorLight: '#ffffff' });
+        }
+
+        function cerrarPagarAhora() {
+            const overlay = document.getElementById('pagarAhoraOverlay');
+            if (overlay) overlay.remove();
+        }
+
+        function _copiarTexto(texto, btnEl) {
+            navigator.clipboard.writeText(texto).then(() => {
+                if (btnEl) {
+                    const original = btnEl.textContent;
+                    btnEl.textContent = '✓';
+                    setTimeout(() => { btnEl.textContent = original; }, 1200);
+                }
+                showToast('Copiado ✓');
+            }).catch(() => showToast('No se pudo copiar', 'err'));
         }
 
         function sendTenantMessage(tenantId) {
