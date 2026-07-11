@@ -4696,6 +4696,47 @@
             if (v !== null) { const n = Number(v.replace(/[\s.,]/g,x=>x==='.'||x===','?'':'')); if(!isNaN(n)){ _expCfgSet(_gastosMes,{fondoUSD:n}); renderGastos(); } }
         }
 
+        // ── Publicación de expensas para el portal de inquilinos ─────────────────
+        // Mientras un mes no está "publicado" el inquilino no ve el número del mes en
+        // curso (puede estar incompleto mientras cargás gastos), y no se le notifica.
+        // Al publicar se genera automáticamente un aviso que aparece en su portal.
+        function _expCfgIsPublicada(mes) { return !!_expCfg(mes).publicada; }
+
+        function publicarExpensasMes(mes) {
+            const MESES_ES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+            const [mm, yy] = mes.split('/');
+            const mesLabel = `${MESES_ES[Number(mm)]} ${yy}`;
+            if (!confirm(`¿Publicar las expensas de ${mesLabel}?\n\nLos inquilinos van a poder ver el detalle y descargar el PDF en su portal, y van a recibir un aviso.`)) return;
+
+            _expCfgSet(mes, { publicada: true, publicadaFecha: new Date().toISOString() });
+
+            // Aviso automático (evita duplicar si ya se había publicado antes)
+            const tituloAviso = `🧾 Expensas de ${mesLabel} disponibles`;
+            if (!appData.avisos) appData.avisos = [];
+            const yaExiste = appData.avisos.some(a => a.titulo === tituloAviso);
+            if (!yaExiste) {
+                const hoy = new Date();
+                const fechaDDMMYYYY = `${String(hoy.getDate()).padStart(2,'0')}/${String(hoy.getMonth()+1).padStart(2,'0')}/${hoy.getFullYear()}`;
+                appData.avisos.push({
+                    id: nextId(appData.avisos),
+                    tipo: 'Aviso general',
+                    titulo: tituloAviso,
+                    fecha: fechaDDMMYYYY,
+                    descripcion: 'Ya podés ver el detalle de tu unidad y descargar el PDF desde tu portal, en "Mi cuenta".'
+                });
+            }
+            persistAll();
+            showToast('Expensas de ' + mesLabel + ' publicadas ✓');
+            renderGastos();
+        }
+
+        function despublicarExpensasMes(mes) {
+            if (!confirm('¿Ocultar de nuevo estas expensas a los inquilinos?')) return;
+            _expCfgSet(mes, { publicada: false });
+            showToast('Expensas ocultadas del portal');
+            renderGastos();
+        }
+
         // Cálculo único de la liquidación mensual de expensas — usado tanto por el PDF del admin
         // (generarLiquidacionPDF) como por el resumen del portal de inquilinos, para garantizar
         // que ambos muestren siempre los mismos números.
@@ -5249,6 +5290,19 @@
                     color:#16a34a;font-size:13px;font-weight:600;cursor:pointer;">
                     📥 Excel
                 </button>
+                ${_expCfgIsPublicada(_gastosMes) ? `
+                <button onclick="despublicarExpensasMes('${_gastosMes}')" title="Los inquilinos ya pueden ver y descargar este mes — click para ocultarlo de nuevo"
+                    style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;
+                    border:1px solid rgba(22,163,74,.35);background:rgba(22,163,74,.12);
+                    color:#16a34a;font-size:13px;font-weight:700;cursor:pointer;">
+                    ✅ Publicada para inquilinos
+                </button>` : `
+                <button onclick="publicarExpensasMes('${_gastosMes}')" title="Publicar este mes en el portal de inquilinos y avisarles"
+                    style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;
+                    border:1px solid rgba(255,56,92,.35);background:rgba(255,56,92,.08);
+                    color:var(--accent-purple);font-size:13px;font-weight:700;cursor:pointer;">
+                    📢 Publicar para inquilinos
+                </button>`}
             </div>
 
             <!-- ENCABEZADO -->
@@ -7541,6 +7595,15 @@
             return `<div style="margin-top:6px;"><a href="${data}" target="_blank" rel="noopener"><img src="${data}" style="max-width:180px;max-height:180px;border-radius:10px;display:block;box-shadow:var(--shadow-sm);"></a></div>`;
         }
 
+        // Un mes está "disponible" para el inquilino si ya pasó, o si es el mes en curso
+        // y el admin lo publicó explícitamente (evita mostrar números provisorios a medias).
+        function _mesDisponibleParaInquilino(mesKey) {
+            const now = new Date();
+            const currentKey = String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear();
+            if (mesKey === currentKey) return _expCfgIsPublicada(mesKey);
+            return true;
+        }
+
         // Resumen de expensas por mes para el portal de inquilinos — usa computeLiquidacionMes(),
         // la MISMA función que genera la liquidación oficial en el panel admin, así los números que
         // ve el inquilino (saldo a pagar, pagado, prorrateo) son siempre idénticos a los del admin.
@@ -7554,16 +7617,88 @@
                 const mm = String(d.getMonth()+1).padStart(2,'0');
                 const yy = d.getFullYear();
                 const key = mm + '/' + yy;
+                const disponible = _mesDisponibleParaInquilino(key);
+                const label = MESES_CORTO[d.getMonth()] + ' ' + yy;
+                if (!disponible) { out.push({ key, label, disponible: false, sumaAnt: 0, pagado: 0, aProrr: 0, saldoPagar: 0, seg2do: 0, saldo: 0 }); continue; }
                 const L = computeLiquidacionMes(key);
                 const u = L.unidadData.find(x => Number(x.p.id) === Number(prop.id));
-                if (!u) { out.push({ key, label: MESES_CORTO[d.getMonth()] + ' ' + yy, sumaAnt: 0, pagado: 0, aProrr: 0, saldoPagar: 0, seg2do: 0, saldo: 0 }); continue; }
+                if (!u) { out.push({ key, label, disponible: true, sumaAnt: 0, pagado: 0, aProrr: 0, saldoPagar: 0, seg2do: 0, saldo: 0 }); continue; }
                 out.push({
-                    key, label: MESES_CORTO[d.getMonth()] + ' ' + yy,
+                    key, label, disponible: true,
                     sumaAnt: u.sumaAnt, pagado: u.pagadoU, aProrr: u.aProrr,
                     saldoPagar: u.saldoPagar, seg2do: u.seg2do, saldo: u.saldoPagar
                 });
             }
             return out;
+        }
+
+        // PDF de expensas para un inquilino — versión personalizada (solo su unidad, no expone
+        // los montos de las demás unidades como sí hace generarLiquidacionPDF del admin).
+        function generarLiquidacionTenantPDF(tenantId, mes) {
+            const tenant = (appData.inquilinos||[]).find(i => Number(i.id) === Number(tenantId));
+            if (!tenant) return;
+            const prop = (appData.propiedades||[]).find(p => p.id === tenant.propiedad);
+            if (!prop) return;
+            const L = computeLiquidacionMes(mes);
+            const u = L.unidadData.find(x => Number(x.p.id) === Number(prop.id));
+            if (!u) { alert('Todavía no hay datos de expensas cargados para tu unidad en este mes.'); return; }
+
+            const fmt = n => '$ ' + Math.round(n||0).toLocaleString('es-AR');
+            const pct = n => (Math.round(n*10)/10) + '%';
+
+            const w = window.open('', '_blank', 'width=680,height=780');
+            w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Expensas ${L.mesLabel} — ${prop.nombre}</title>
+<style>
+  body{font-family:'Segoe UI',Arial,sans-serif;margin:0;padding:30px 40px;color:#1a1a2e;background:#fff;font-size:13px;}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #ff385c;padding-bottom:16px;margin-bottom:20px;}
+  .logo{font-size:20px;font-weight:800;color:#ff385c;}
+  .sub{font-size:12px;color:#555;margin-top:2px;}
+  .badge{background:#ff385c;color:white;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;}
+  table{width:100%;border-collapse:collapse;margin-bottom:18px;}
+  td{padding:8px 10px;font-size:13px;border-bottom:1px solid #eee;}
+  td:first-child{color:#555;}
+  td:last-child{text-align:right;font-weight:600;}
+  .tot2{background:#ede9fe;}
+  .tot2 td{color:#d70466;font-weight:800;font-size:14px;}
+  .warn td{color:#dc2626;}
+  .bank{border:1px solid #e5e7eb;border-radius:6px;padding:12px 16px;font-size:12px;line-height:1.9;margin-top:8px;}
+  .bank .lbl{color:#888;font-size:10px;}
+  .footer{font-size:11px;color:#888;text-align:center;border-top:1px solid #eee;padding-top:12px;margin-top:20px;}
+  @media print{.no-print{display:none!important}}
+</style>
+</head><body>
+<div class="header">
+  <div><div class="logo">🏠 Fideicomiso Manzanares 4559</div>
+    <div class="sub">${prop.nombre}${prop.direccion ? ' · '+prop.direccion : ''}</div></div>
+  <div class="badge">${L.mesLabel.toUpperCase()}</div>
+</div>
+<table>
+  <tr><td>Inquilino</td><td>${tenant.nombre}</td></tr>
+  <tr><td>Unidad</td><td>${prop.nombre}</td></tr>
+  <tr><td>Tu proporción</td><td>${pct(prop.expensasRatio||0)}</td></tr>
+</table>
+<table>
+  <tr><td>Egresos totales del edificio este mes</td><td>${fmt(L.totalEgresos)}</td></tr>
+  <tr><td>Saldo pendiente de meses anteriores</td><td>${fmt(u.sumaAnt)}</td></tr>
+  <tr><td>Pagado por vos</td><td style="color:#166534;">${fmt(u.pagadoU)}</td></tr>
+  <tr class="${u.saldoPend>0?'warn':''}"><td>Saldo pendiente previo</td><td>${fmt(u.saldoPend)}</td></tr>
+  <tr><td>Prorrateo de este mes (tu ${pct(prop.expensasRatio||0)})</td><td>${fmt(u.aProrr)}</td></tr>
+  <tr class="tot2"><td>SALDO A PAGAR</td><td>${fmt(u.saldoPagar)}</td></tr>
+  <tr class="warn"><td style="font-size:11px;">2° vencimiento después del día 15 (+0,5%)</td><td>${fmt(u.seg2do)}</td></tr>
+</table>
+<div class="bank">
+  <div style="font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;color:#444;">DATOS BANCARIOS</div>
+  <div><span class="lbl">Cuenta: </span>Caja Ahorro Pesos</div>
+  <div><span class="lbl">Nro: </span>4018218-4 245-5</div>
+  <div><span class="lbl">CBU: </span><span style="font-family:monospace;">0070245630004018218454</span></div>
+  <div><span class="lbl">DNI: </span>29392330</div>
+  <div><span class="lbl">Alias: </span><strong>manzanares4559</strong></div>
+</div>
+<div class="footer">Fideicomiso Manzanares 4559 &middot; Generado el ${new Date().toLocaleDateString('es-AR')} &middot; Documento informativo — no reemplaza recibo oficial</div>
+</body></html>`);
+            w.document.close();
+            setTimeout(() => w.print(), 500);
         }
 
         function renderTenantPortal(tenantId) {
@@ -7620,7 +7755,14 @@
                         </div>
                         ${expensasResumen.length ? `
                         <div style="margin-top:16px;">
-                            <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;font-weight:700;margin-bottom:8px;">Expensas — mes actual (${expensasResumen[0].label})</div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                                <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;font-weight:700;">Expensas — mes actual (${expensasResumen[0].label})</div>
+                                ${expensasResumen[0].disponible ? `<button onclick="generarLiquidacionTenantPDF(${tenant.id},'${expensasResumen[0].key}')" style="background:none;border:1px solid var(--border-color);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--accent-purple);cursor:pointer;">📄 Descargar PDF</button>` : ''}
+                            </div>
+                            ${!expensasResumen[0].disponible ? `
+                            <div style="background:var(--bg-tertiary);border-radius:10px;padding:14px;font-size:12px;color:var(--text-tertiary);text-align:center;margin-bottom:14px;">
+                                ⏳ El administrador todavía no publicó las expensas de este mes. Te vamos a avisar apenas estén disponibles.
+                            </div>` : `
                             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
                                 <div style="background:var(--bg-tertiary);border-radius:10px;padding:10px;text-align:center;">
                                     <div style="font-size:10px;color:var(--text-tertiary);margin-bottom:4px;">Prorrateo del mes</div>
@@ -7636,13 +7778,15 @@
                                 </div>
                             </div>
                             ${expensasResumen[0].saldoPagar>0 ? `<div style="font-size:11px;color:var(--text-tertiary);margin:-8px 0 14px;">Con 2° vencimiento (después del día 15, +0,5%): <strong style="color:var(--text-primary);">$${Math.round(expensasResumen[0].seg2do).toLocaleString('es-AR')}</strong></div>` : ''}
+                            `}
                             <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;font-weight:700;margin-bottom:8px;">Historial</div>
                             <div style="display:flex;flex-direction:column;gap:6px;">
                                 ${expensasResumen.slice(1).map(e => `
-                                    <div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:8px 10px;background:var(--bg-tertiary);border-radius:8px;">
+                                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;padding:8px 10px;background:var(--bg-tertiary);border-radius:8px;">
                                         <span>${e.label}</span>
                                         <span style="color:var(--text-secondary);">Pagado $${Math.round(e.pagado).toLocaleString('es-AR')}</span>
                                         <span style="font-weight:700;color:${e.saldoPagar>0?'#e0234f':'#16a34a'};">${e.saldoPagar>0?'Saldo $'+Math.round(e.saldoPagar).toLocaleString('es-AR'):'Al día'}</span>
+                                        <button onclick="generarLiquidacionTenantPDF(${tenant.id},'${e.key}')" title="Descargar PDF" style="background:none;border:none;cursor:pointer;font-size:13px;padding:0 2px;">📄</button>
                                     </div>`).join('')}
                             </div>
                             <div style="font-size:10px;color:var(--text-tertiary);margin-top:10px;line-height:1.5;">* Mismos valores que la liquidación oficial del administrador, según tu proporción (${prop.expensasRatio}%).</div>
