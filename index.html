@@ -2093,7 +2093,8 @@
             servicios: [],
             tareas: [],
             mensajes: [],
-            avisos: []
+            avisos: [],
+            expensasConfig: []
         };
 
         function getDateDaysAgo(days) {
@@ -2253,7 +2254,7 @@
         const FB_COL = 'manzanares4559'; // colección raíz en Firestore
 
         const FB_KEYS = ['propietarios','propiedades','inquilinos','contratos',
-                         'quejas','pagos','proveedores','gastos','caja','waTemplates','expensasCobros','ajustes','servicios','tareas','mensajes','avisos'];
+                         'quejas','pagos','proveedores','gastos','caja','waTemplates','expensasCobros','ajustes','servicios','tareas','mensajes','avisos','expensasConfig'];
 
         // Estado inicial vacío — se llena desde Firestore en initializeApp()
         let appData = JSON.parse(JSON.stringify(initialData));
@@ -2511,6 +2512,28 @@
                     appData.waTemplates = initialData.waTemplates || [];
                 if (!appData.mensajes)  appData.mensajes = [];
                 if (!appData.avisos)    appData.avisos = [];
+                if (!appData.expensasConfig) appData.expensasConfig = [];
+
+                // Migración única: el saldo anterior / fondo USD por mes vivía sólo en localStorage
+                // de este dispositivo (no sincronizaba). Lo subimos a Firestore para que también
+                // lo vean los inquilinos en su portal y cualquier otro dispositivo del admin.
+                try {
+                    let migrated = false;
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && key.indexOf('expCfg_') === 0) {
+                            const mes = key.replace('expCfg_', '').replace('_', '/');
+                            if (!appData.expensasConfig.some(c => c.mes === mes)) {
+                                try {
+                                    const patch = JSON.parse(localStorage.getItem(key) || '{}');
+                                    appData.expensasConfig.push({ mes, saldoAnterior: patch.saldoAnterior || 0, fondoUSD: patch.fondoUSD || 0 });
+                                    migrated = true;
+                                } catch (e) {}
+                            }
+                        }
+                    }
+                    if (migrated) persistAll();
+                } catch (e) { console.warn('Migración expCfg falló:', e); }
 
                 await restoreLocalPhotos();
                 return true;
@@ -4647,14 +4670,18 @@
             return `${String(n.getMonth()+1).padStart(2,'0')}/${n.getFullYear()}`;
         })();
 
-        // Config helpers (saldo anterior y fondo USD se guardan por mes en localStorage)
-        function _expCfgKey(mes) { return `expCfg_${mes.replace('/','_')}`; }
+        // Config helpers (saldo anterior y fondo USD se guardan por mes en appData.expensasConfig,
+        // sincronizado por Firestore — así el portal de inquilinos ve los mismos valores que el admin)
         function _expCfg(mes) {
-            try { return JSON.parse(localStorage.getItem(_expCfgKey(mes))||'{}'); } catch(e) { return {}; }
+            if (!appData.expensasConfig) appData.expensasConfig = [];
+            return appData.expensasConfig.find(c => c.mes === mes) || {};
         }
         function _expCfgSet(mes, patch) {
-            const c = _expCfg(mes); Object.assign(c, patch);
-            localStorage.setItem(_expCfgKey(mes), JSON.stringify(c));
+            if (!appData.expensasConfig) appData.expensasConfig = [];
+            let c = appData.expensasConfig.find(c => c.mes === mes);
+            if (!c) { c = { mes }; appData.expensasConfig.push(c); }
+            Object.assign(c, patch);
+            persistAll();
         }
         function editSaldoAnterior() {
             const c = _expCfg(_gastosMes);
@@ -4667,6 +4694,65 @@
             const cur = c.fondoUSD !== undefined ? c.fondoUSD : 0;
             const v = prompt('Fondo de mantenimiento USD (monto en $):', cur);
             if (v !== null) { const n = Number(v.replace(/[\s.,]/g,x=>x==='.'||x===','?'':'')); if(!isNaN(n)){ _expCfgSet(_gastosMes,{fondoUSD:n}); renderGastos(); } }
+        }
+
+        // Cálculo único de la liquidación mensual de expensas — usado tanto por el PDF del admin
+        // (generarLiquidacionPDF) como por el resumen del portal de inquilinos, para garantizar
+        // que ambos muestren siempre los mismos números.
+        function computeLiquidacionMes(mes) {
+            const MESES_ES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+            const [mm, yy] = mes.split('/');
+            const mesLabel = `${MESES_ES[Number(mm)]} ${yy}`;
+
+            const parseDate = d => { if(!d||d==='—') return null; const p=d.split('/'); return p.length===3?new Date(+p[2],+p[1]-1,+p[0]):null; };
+            const itemMes  = i => { const d=parseDate(i.fecha); return d?`${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`:null; };
+
+            let pm=Number(mm)-1, py=Number(yy); if(pm===0){pm=12;py--;}
+            const mesAnt = `${String(pm).padStart(2,'0')}/${py}`;
+
+            const gastosMes = (appData.gastos||[]).filter(g=>itemMes(g)===mes);
+            const gastosAnt = (appData.gastos||[]).filter(g=>itemMes(g)===mesAnt);
+            const totalEgresos    = gastosMes.reduce((s,g)=>s+(g.monto||0),0);
+            const totalEgresosAnt = gastosAnt.reduce((s,g)=>s+(g.monto||0),0);
+
+            const cobrosMes = (appData.expensasCobros||[]).filter(c=>c.mes===mes);
+            const totalPagos   = cobrosMes.reduce((s,c)=>s+(c.monto||0),0);
+
+            const cfg = _expCfg(mes);
+            const saldoAnterior = cfg.saldoAnterior||0;
+            const fondoUSD      = cfg.fondoUSD||0;
+            const totalIngresos = saldoAnterior + totalPagos;
+            const saldoBalance  = totalIngresos - totalEgresos;
+
+            const unidades = (appData.propiedades||[]).filter(p=>(p.expensasRatio||0)>0).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+            const unidadData = unidades.map(p=>{
+                const ratio = (p.expensasRatio||0)/100;
+                const sumaAnt  = totalEgresosAnt * ratio;
+                const pagadoU  = cobrosMes.filter(c=>Number(c.propiedad)===Number(p.id)).reduce((s,c)=>s+(c.monto||0),0);
+                const saldoPend  = Math.max(0,sumaAnt-pagadoU);
+                const aProrr     = totalEgresos * ratio;
+                const saldoPagar = saldoPend + aProrr;
+                const seg2do     = saldoPagar * 1.005;
+                return {p, ratio, sumaAnt, pagadoU, saldoPend, aProrr, saldoPagar, seg2do};
+            });
+
+            const sorted = [...gastosMes].sort((a,b)=>{
+                const pd=d=>{if(!d)return 0;const p=d.split('/');return new Date(+p[2],+p[1]-1,+p[0]).getTime();};
+                return pd(a.fecha)-pd(b.fecha);
+            });
+
+            const totD = {
+                sumaAnt:   unidadData.reduce((s,u)=>s+u.sumaAnt,0),
+                pagado:    unidadData.reduce((s,u)=>s+u.pagadoU,0),
+                saldoPend: unidadData.reduce((s,u)=>s+u.saldoPend,0),
+                aProrr:    totalEgresos,
+                saldoPagar:unidadData.reduce((s,u)=>s+u.saldoPagar,0),
+                seg2do:    unidadData.reduce((s,u)=>s+u.seg2do,0),
+            };
+
+            return { mes, mesLabel, mesAnt, gastosMes, gastosAnt, sorted, totalEgresos, totalEgresosAnt,
+                     cobrosMes, totalPagos, saldoAnterior, fondoUSD, totalIngresos, saldoBalance,
+                     unidades, unidadData, totD };
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -6175,60 +6261,14 @@
 
         // ── Generador de PDF de Liquidación de Expensas ──────────────────────
         function generarLiquidacionPDF(mes) {
-            const MESES_ES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-            const [mm, yy] = mes.split('/');
-            const mesLabel = `${MESES_ES[Number(mm)]} ${yy}`;
+            const L = computeLiquidacionMes(mes);
+            const { mesLabel, sorted, totalEgresos, totalPagos,
+                     saldoAnterior, fondoUSD, totalIngresos, saldoBalance,
+                     unidades, unidadData, totD } = L;
 
-            const parseDate = d => { if(!d||d==='—') return null; const p=d.split('/'); return p.length===3?new Date(+p[2],+p[1]-1,+p[0]):null; };
-            const itemMes  = i => { const d=parseDate(i.fecha); return d?`${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`:null; };
-
-            let pm=Number(mm)-1, py=Number(yy); if(pm===0){pm=12;py--;}
-            const mesAnt = `${String(pm).padStart(2,'0')}/${py}`;
-
-            const gastosMes = (appData.gastos||[]).filter(g=>itemMes(g)===mes);
-            const gastosAnt = (appData.gastos||[]).filter(g=>itemMes(g)===mesAnt);
-            const totalEgresos    = gastosMes.reduce((s,g)=>s+(g.monto||0),0);
-            const totalEgresosAnt = gastosAnt.reduce((s,g)=>s+(g.monto||0),0);
-
-            const cobrosMesPDF = (appData.expensasCobros||[]).filter(c=>c.mes===mes);
-            const totalPagos   = cobrosMesPDF.reduce((s,c)=>s+(c.monto||0),0);
-
-            const cfg = _expCfg(mes);
-            const saldoAnterior = cfg.saldoAnterior||0;
-            const fondoUSD      = cfg.fondoUSD||0;
-            const totalIngresos = saldoAnterior + totalPagos;
-            const saldoBalance  = totalIngresos - totalEgresos;
-
-            const unidades = (appData.propiedades||[]).filter(p=>(p.expensasRatio||0)>0).sort((a,b)=>a.nombre.localeCompare(b.nombre));
-            const unidadData = unidades.map(p=>{
-                const ratio = (p.expensasRatio||0)/100;
-                const sumaAnt  = totalEgresosAnt * ratio;
-                const pagadoU  = cobrosMesPDF.filter(c=>Number(c.propiedad)===Number(p.id)).reduce((s,c)=>s+(c.monto||0),0);
-                const saldoPend  = Math.max(0,sumaAnt-pagadoU);
-                const aProrr     = totalEgresos * ratio;
-                const saldoPagar = saldoPend + aProrr;
-                const seg2do     = saldoPagar * 1.005;
-                return {p, ratio, sumaAnt, pagadoU, saldoPend, aProrr, saldoPagar, seg2do};
-            });
-
-            const sorted = [...gastosMes].sort((a,b)=>{
-                const pd=d=>{if(!d)return 0;const p=d.split('/');return new Date(+p[2],+p[1]-1,+p[0]).getTime();};
-                return pd(a.fecha)-pd(b.fecha);
-            });
-
-            const fmt  = n => '$\u00a0'+Math.round(n||0).toLocaleString('es-AR');
+            const fmt  = n => '$ '+Math.round(n||0).toLocaleString('es-AR');
             const pct  = n => (Math.round(n*10)/10)+'%';
-            const totD = {
-                sumaAnt:   unidadData.reduce((s,u)=>s+u.sumaAnt,0),
-                pagado:    unidadData.reduce((s,u)=>s+u.pagadoU,0),
-                saldoPend: unidadData.reduce((s,u)=>s+u.saldoPend,0),
-                aProrr:    totalEgresos,
-                saldoPagar:unidadData.reduce((s,u)=>s+u.saldoPagar,0),
-                seg2do:    unidadData.reduce((s,u)=>s+u.seg2do,0),
-            };
-
             const colW = unidades.length>0 ? `${Math.floor(60/unidades.length)}%` : '10%';
-
             const html = `<!DOCTYPE html><html lang="es"><head>
             <meta charset="UTF-8">
             <title>Liquidación Expensas ${mesLabel}</title>
@@ -7501,17 +7541,11 @@
             return `<div style="margin-top:6px;"><a href="${data}" target="_blank" rel="noopener"><img src="${data}" style="max-width:180px;max-height:180px;border-radius:10px;display:block;box-shadow:var(--shadow-sm);"></a></div>`;
         }
 
-        // Resumen simplificado de expensas por mes: gastos totales del edificio × proporción de la unidad, vs. pagado.
-        // No usa saldoAnterior/fondoUSD (esos viven en localStorage del admin y no están sincronizados) — es una
-        // estimación auto-consistente para que el inquilino tenga visibilidad, no reemplaza la liquidación oficial.
+        // Resumen de expensas por mes para el portal de inquilinos — usa computeLiquidacionMes(),
+        // la MISMA función que genera la liquidación oficial en el panel admin, así los números que
+        // ve el inquilino (saldo a pagar, pagado, prorrateo) son siempre idénticos a los del admin.
         function _computeExpensasResumen(prop) {
             if (!prop || !((prop.expensasRatio||0) > 0)) return [];
-            const ratio = (prop.expensasRatio||0) / 100;
-            const itemMes = g => {
-                if (!g.fecha) return null;
-                const p = g.fecha.split('/');
-                return p.length === 3 ? p[1].padStart(2,'0') + '/' + p[2] : null;
-            };
             const MESES_CORTO = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
             const now = new Date();
             const out = [];
@@ -7520,10 +7554,14 @@
                 const mm = String(d.getMonth()+1).padStart(2,'0');
                 const yy = d.getFullYear();
                 const key = mm + '/' + yy;
-                const totalGastos = (appData.gastos||[]).filter(g => itemMes(g) === key).reduce((s,g) => s + (g.monto||0), 0);
-                const pagado = (appData.expensasCobros||[]).filter(c => c.mes === key && Number(c.propiedad) === Number(prop.id)).reduce((s,c) => s + (c.monto||0), 0);
-                const miParte = totalGastos * ratio;
-                out.push({ key, label: MESES_CORTO[d.getMonth()] + ' ' + yy, totalGastos, miParte, pagado, saldo: miParte - pagado });
+                const L = computeLiquidacionMes(key);
+                const u = L.unidadData.find(x => Number(x.p.id) === Number(prop.id));
+                if (!u) { out.push({ key, label: MESES_CORTO[d.getMonth()] + ' ' + yy, sumaAnt: 0, pagado: 0, aProrr: 0, saldoPagar: 0, seg2do: 0, saldo: 0 }); continue; }
+                out.push({
+                    key, label: MESES_CORTO[d.getMonth()] + ' ' + yy,
+                    sumaAnt: u.sumaAnt, pagado: u.pagadoU, aProrr: u.aProrr,
+                    saldoPagar: u.saldoPagar, seg2do: u.seg2do, saldo: u.saldoPagar
+                });
             }
             return out;
         }
@@ -7585,28 +7623,29 @@
                             <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;font-weight:700;margin-bottom:8px;">Expensas — mes actual (${expensasResumen[0].label})</div>
                             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
                                 <div style="background:var(--bg-tertiary);border-radius:10px;padding:10px;text-align:center;">
-                                    <div style="font-size:10px;color:var(--text-tertiary);margin-bottom:4px;">Mi parte</div>
-                                    <div style="font-size:13px;font-weight:700;">$${Math.round(expensasResumen[0].miParte).toLocaleString('es-AR')}</div>
+                                    <div style="font-size:10px;color:var(--text-tertiary);margin-bottom:4px;">Prorrateo del mes</div>
+                                    <div style="font-size:13px;font-weight:700;">$${Math.round(expensasResumen[0].aProrr).toLocaleString('es-AR')}</div>
                                 </div>
                                 <div style="background:var(--bg-tertiary);border-radius:10px;padding:10px;text-align:center;">
                                     <div style="font-size:10px;color:var(--text-tertiary);margin-bottom:4px;">Pagado</div>
                                     <div style="font-size:13px;font-weight:700;color:#16a34a;">$${Math.round(expensasResumen[0].pagado).toLocaleString('es-AR')}</div>
                                 </div>
                                 <div style="background:var(--bg-tertiary);border-radius:10px;padding:10px;text-align:center;">
-                                    <div style="font-size:10px;color:var(--text-tertiary);margin-bottom:4px;">Saldo</div>
-                                    <div style="font-size:13px;font-weight:700;color:${expensasResumen[0].saldo>0?'#e0234f':'#16a34a'};">$${Math.round(Math.max(0,expensasResumen[0].saldo)).toLocaleString('es-AR')}</div>
+                                    <div style="font-size:10px;color:var(--text-tertiary);margin-bottom:4px;">Saldo a pagar</div>
+                                    <div style="font-size:13px;font-weight:700;color:${expensasResumen[0].saldoPagar>0?'#e0234f':'#16a34a'};">$${Math.round(Math.max(0,expensasResumen[0].saldoPagar)).toLocaleString('es-AR')}</div>
                                 </div>
                             </div>
+                            ${expensasResumen[0].saldoPagar>0 ? `<div style="font-size:11px;color:var(--text-tertiary);margin:-8px 0 14px;">Con 2° vencimiento (después del día 15, +0,5%): <strong style="color:var(--text-primary);">$${Math.round(expensasResumen[0].seg2do).toLocaleString('es-AR')}</strong></div>` : ''}
                             <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;font-weight:700;margin-bottom:8px;">Historial</div>
                             <div style="display:flex;flex-direction:column;gap:6px;">
                                 ${expensasResumen.slice(1).map(e => `
                                     <div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:8px 10px;background:var(--bg-tertiary);border-radius:8px;">
                                         <span>${e.label}</span>
                                         <span style="color:var(--text-secondary);">Pagado $${Math.round(e.pagado).toLocaleString('es-AR')}</span>
-                                        <span style="font-weight:700;color:${e.saldo>0?'#e0234f':'#16a34a'};">${e.saldo>0?'Saldo $'+Math.round(e.saldo).toLocaleString('es-AR'):'Al día'}</span>
+                                        <span style="font-weight:700;color:${e.saldoPagar>0?'#e0234f':'#16a34a'};">${e.saldoPagar>0?'Saldo $'+Math.round(e.saldoPagar).toLocaleString('es-AR'):'Al día'}</span>
                                     </div>`).join('')}
                             </div>
-                            <div style="font-size:10px;color:var(--text-tertiary);margin-top:10px;line-height:1.5;">* Estimado en base a los gastos cargados del edificio y tu proporción (${prop.expensasRatio}%). Puede no incluir ajustes o saldos de meses anteriores.</div>
+                            <div style="font-size:10px;color:var(--text-tertiary);margin-top:10px;line-height:1.5;">* Mismos valores que la liquidación oficial del administrador, según tu proporción (${prop.expensasRatio}%).</div>
                         </div>` : ''}
                     </div>
 
