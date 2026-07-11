@@ -7356,7 +7356,8 @@
                 'Corte de agua': '💧', 'Corte de gas': '🔥', 'Aviso general': '📋'
             };
 
-            const sorted = [...(appData.avisos||[])].sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+            const parseAvisoFecha = f => { if (!f) return null; const p = f.split('/'); return p.length === 3 ? new Date(+p[2], +p[1]-1, +p[0]) : null; };
+            const sorted = [...(appData.avisos||[])].sort((a,b) => (parseAvisoFecha(b.fecha)||0) - (parseAvisoFecha(a.fecha)||0));
 
             if (sorted.length === 0) {
                 list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📢</div><div class="empty-state-title">Sin avisos cargados</div><div class="empty-state-text">Agregá fumigaciones, mantenimientos o avisos generales — los inquilinos los ven en su portal.</div></div>`;
@@ -7365,7 +7366,7 @@
 
             const today = new Date(); today.setHours(0,0,0,0);
             sorted.forEach(a => {
-                const d = a.fecha ? new Date(a.fecha + 'T00:00:00') : null;
+                const d = parseAvisoFecha(a.fecha);
                 const isFuture = d && d >= today;
                 const item = document.createElement('div');
                 item.className = 'list-item';
@@ -7549,7 +7550,8 @@
 
             const AVISO_ICONS = { 'Fumigación': '🐜', 'Mantenimiento': '🔧', 'Corte de luz': '⚡', 'Corte de agua': '💧', 'Corte de gas': '🔥', 'Aviso general': '📋' };
             const todayA = new Date(); todayA.setHours(0,0,0,0);
-            const avisosOrdenados = [...(appData.avisos||[])].sort((a,b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 5);
+            const parseAvisoFecha = f => { if (!f) return null; const p = f.split('/'); return p.length === 3 ? new Date(+p[2], +p[1]-1, +p[0]) : null; };
+            const avisosOrdenados = [...(appData.avisos||[])].sort((a,b) => (parseAvisoFecha(b.fecha)||0) - (parseAvisoFecha(a.fecha)||0)).slice(0, 5);
 
             const parseDDMM = f => { if (!f) return null; const p = f.split('/'); return p.length === 3 ? new Date(+p[2], +p[1]-1, +p[0]) : null; };
             const misPagos = (appData.pagos||[]).filter(p => Number(p.inquilino) === Number(tenant.id))
@@ -7625,7 +7627,7 @@
                         ${avisosOrdenados.length ? `
                         <div style="display:flex;flex-direction:column;gap:8px;">
                             ${avisosOrdenados.map(a => {
-                                const d = a.fecha ? new Date(a.fecha + 'T00:00:00') : null;
+                                const d = parseAvisoFecha(a.fecha);
                                 const isFuture = d && d >= todayA;
                                 return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-tertiary);border-radius:10px;">
                                     <span style="font-size:16px;">${AVISO_ICONS[a.tipo]||'📢'}</span>
